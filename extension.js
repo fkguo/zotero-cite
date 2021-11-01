@@ -10,6 +10,10 @@ function showStatusMessage(message){
     vscode.window.setStatusBarMessage(message, 1500);
 }
 
+function showErrorMessage(message){
+    vscode.window.showErrorMessage(message);
+}
+
 async function exportEntries(){
     try{
         const editor = vscode.window.activeTextEditor;
@@ -24,14 +28,18 @@ async function exportEntries(){
         }
         
         // Ask for bib file name
-        await vscode.window.showInputBox({prompt: 'File Name:', placeHolder: 'ref.bib'}).then(value => {
+        await vscode.window.showInputBox({value: 'ref.bib', prompt: 'File Name:'}).then(value => {
             bibName = value;
         });
-
+        
         if (bibName === undefined){
             throw new Error('Cancelled.');
         }
-    
+
+        if (bibName.length < 5 || path.extname(bibName)!='.bib'){
+            throw new Error('bibName is invalid or its length is less than 5.');
+        }
+
         // Create bib Path
         var parentDir = path.dirname(currentlyOpenTabfilePath);
         var bibPath = path.join(parentDir, bibName);
@@ -76,19 +84,24 @@ async function exportEntries(){
         })
         .then((res) => {
             let data = res.data;
+            
             if('error' in data){
                 let err = data['error'];
                 throw new Error(err['message']);
-            }else{
-                let bib = data['result'][2];
-                fs.writeFileSync(bibPath, bib, {
-                    "encoding": "utf-8"
-                });
-                showStatusMessage('Export Successfully.');
             }
+
+            let bib = data['result'][2];
+            fs.writeFileSync(bibPath, bib, {
+                "encoding": "utf-8"
+            });
+
+            showStatusMessage('Export Successfully.');
+        })
+        .catch((err) => {
+            showErrorMessage(err.message);
         });
     }catch(err){
-        vscode.window.showErrorMessage(err.message);
+        showErrorMessage(err.message);
     }
 }
 
