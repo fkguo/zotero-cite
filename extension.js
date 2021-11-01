@@ -7,7 +7,7 @@ const fs = require('fs');
 
 
 function showStatusMessage(message){
-    vscode.window.setStatusBarMessage(message, 2000);
+    vscode.window.setStatusBarMessage(message, 1500);
 }
 
 async function exportEntries(){

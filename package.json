@@ -2,8 +2,9 @@
   "name": "zotero-export",
   "publisher": "XING",
   "displayName": "Zotero Export",
+  "repository": {"url": "https://gitee.com/rusterx/zotero-export"},
   "description": "Export bibliography from zotero via json rpc",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "engines": {
     "vscode": "^1.61.0"
   },

@@ -5,3 +5,7 @@
 
 If we use Zotero to manage the literature, and the document is used in the document writing process of `pandoc`, but the bib file has not been generated yet, then the plug-in can convert all references into a bib through the command version of `Zotero: Export Bibliography Entries` document.
 
+# 修改历史
+
+- 2021-11-01：创建了zotero-export插件并增加了文件名输入的功能。
+
