@@ -7,5 +7,5 @@ If we use Zotero to manage the literature, and the document is used in the docum
 
 # 修改历史
 
-- 2021-11-01：创建了zotero-export插件并增加了文件名输入的功能。
+- 2021-11-01：创建了zotero-export插件并增加了文件名输入的功能。增加when支持，只允许在markdown或者latex环境下激发命令。
 

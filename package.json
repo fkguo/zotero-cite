@@ -2,9 +2,11 @@
   "name": "zotero-export",
   "publisher": "XING",
   "displayName": "Zotero Export",
-  "repository": {"url": "https://gitee.com/rusterx/zotero-export"},
+  "repository": {
+    "url": "https://gitee.com/rusterx/zotero-export"
+  },
   "description": "Export bibliography from zotero via json rpc",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "engines": {
     "vscode": "^1.61.0"
   },
@@ -16,12 +18,16 @@
   ],
   "main": "./extension.js",
   "contributes": {
-    "commands": [
-      {
+    "commands": [{
+      "command": "zotero-export.exportEntries",
+      "title": "Zotero: Export Bibliography Entries"
+    }],
+    "menus": {
+      "commandPalette": [{
         "command": "zotero-export.exportEntries",
-        "title": "Zotero: Export Bibliography Entries"
-      }
-    ]
+        "when": "editorLangId == 'latex' || editorLangId == 'markdown'"
+      }]
+    }
   },
   "scripts": {
     "lint": "eslint .",
