@@ -26,11 +26,11 @@
     },
     {
       "command": "zotero-cite.citeBibliography",
-      "title": "Zotero: Cite Markdown Bibliography"
+      "title": "Zotero: Cite and Create Pandoc/LaTeX Bibliography"
     },
     {
       "command": "zotero-cite.citeMarkdownBibliography",
-      "title": "Zotero: Cite Pandoc Bibliography"
+      "title": "Zotero: Cite and Create Markdown Bibliography"
     }
   ],
     "menus": {

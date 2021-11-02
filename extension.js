@@ -194,7 +194,7 @@ async function citeMarkdownBibliography(){
     // insert markdown citation
     const citeData = '[^'+citeKey+']';
     enterText(citeData);
-    
+
     if (keys.includes(citeKey)){
         console.log(`${citeKey} exists.`)
         return;
