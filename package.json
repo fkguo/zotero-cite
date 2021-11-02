@@ -6,7 +6,7 @@
     "url": "https://gitee.com/rusterx/zotero-cite"
   },
   "description": "Cite and manage bibliography from zotero via json rpc",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "engines": {
     "vscode": "^1.61.0"
   },
@@ -20,51 +20,56 @@
   ],
   "main": "./extension.js",
   "contributes": {
-    "commands": [{
-      "command": "zotero-cite.exportBibLatex",
-      "title": "Zotero: Export BibLatex"
-    },
-    {
-      "command": "zotero-cite.citeBibliography",
-      "title": "Zotero: Cite and Create Pandoc/LaTeX Bibliography"
-    },
-    {
-      "command": "zotero-cite.citeMarkdownBibliography",
-      "title": "Zotero: Cite and Create Markdown Bibliography"
-    }
-  ],
-    "menus": {
-      "commandPalette": [{
+    "commands": [
+      {
         "command": "zotero-cite.exportBibLatex",
-        "when": "editorLangId == 'latex' || editorLangId == 'markdown'"
+        "title": "Zotero: Export BibLatex"
       },
       {
         "command": "zotero-cite.citeBibliography",
-        "when": "editorLangId == 'latex' || editorLangId == 'markdown'"
+        "title": "Zotero: Cite and Create Pandoc/LaTeX Bibliography"
       },
       {
         "command": "zotero-cite.citeMarkdownBibliography",
-        "when": "editorLangId == 'latex' || editorLangId == 'markdown'"
+        "title": "Zotero: Cite and Create Markdown Bibliography"
       }
-    ]},
-    "configuration": [{
-      "type": "object",
-      "title": "Zotero Cite",
-      "properties": {
-        "zotero-cite.bibliograpyStyle": {
-          "type": "string",
-          "default": "http://www.zotero.org/styles/apa",
-          "description": "URL of bibliography style, see: https://www.zotero.org/styles",
-          "scope": "window"
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "zotero-cite.exportBibLatex",
+          "when": "editorLangId == 'latex' || editorLangId == 'markdown'"
         },
-        "zotero-cite.defaultBibName": {
-          "type": "string",
-          "default": "ref.bib",
-          "scope": "window",
-          "description": "Default bib file name"
+        {
+          "command": "zotero-cite.citeBibliography",
+          "when": "editorLangId == 'latex' || editorLangId == 'markdown'"
+        },
+        {
+          "command": "zotero-cite.citeMarkdownBibliography",
+          "when": "editorLangId == 'latex' || editorLangId == 'markdown'"
+        }
+      ]
+    },
+    "configuration": [
+      {
+        "type": "object",
+        "title": "Zotero Cite",
+        "properties": {
+          "zotero-cite.bibliograpyStyle": {
+            "type": "string",
+            "default": "http://www.zotero.org/styles/apa",
+            "description": "URL of bibliography style, see: https://www.zotero.org/styles",
+            "scope": "window"
+          },
+          "zotero-cite.defaultBibName": {
+            "type": "string",
+            "default": "ref.bib",
+            "scope": "window",
+            "description": "Default bib file name"
+          }
         }
       }
-    }]
+    ]
   },
   "scripts": {
     "lint": "eslint .",
