@@ -1,7 +1,7 @@
 {
-  "name": "zotero-export",
+  "name": "zotero-cite",
   "publisher": "XING",
-  "displayName": "Zotero Export",
+  "displayName": "Zotero Cite",
   "repository": {
     "url": "https://gitee.com/rusterx/zotero-export"
   },
@@ -14,20 +14,57 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:zotero-export.exportEntries"
+    "onCommand:zotero-cite.exportBibLatex",
+    "onCommand:zotero-cite.citeBibliography",
+    "onCommand:zotero-cite.citeMarkdownBibliography",
   ],
   "main": "./extension.js",
   "contributes": {
     "commands": [{
-      "command": "zotero-export.exportEntries",
-      "title": "Zotero: Export Bibliography Entries"
-    }],
+      "command": "zotero-cite.exportBibLatex",
+      "title": "Zotero: Export BibLatex"
+    },
+    {
+      "command": "zotero-cite.citeBibliography",
+      "title": "Zotero: Cite Markdown Bibliography"
+    },
+    {
+      "command": "zotero-cite.citeMarkdownBibliography",
+      "title": "Zotero: Cite Pandoc Bibliography"
+    }
+  ],
     "menus": {
       "commandPalette": [{
-        "command": "zotero-export.exportEntries",
+        "command": "zotero-cite.exportBibLatex",
         "when": "editorLangId == 'latex' || editorLangId == 'markdown'"
-      }]
-    }
+      },
+      {
+        "command": "zotero-cite.citeBibliography",
+        "when": "editorLangId == 'latex' || editorLangId == 'markdown'"
+      },
+      {
+        "command": "zotero-cite.citeMarkdownBibliography",
+        "when": "editorLangId == 'latex' || editorLangId == 'markdown'"
+      }
+    ]},
+    "configuration": [{
+      "type": "object",
+      "title": "Zotero Export",
+      "properties": {
+        "zotero-cite.bibliograpyStyle": {
+          "type": "string",
+          "default": "http://www.zotero.org/styles/apa",
+          "description": "URL of bibliography style, see: https://www.zotero.org/styles",
+          "scope": "window"
+        },
+        "zotero-cite.defaultBibName": {
+          "type": "string",
+          "default": "ref.bib",
+          "scope": "window",
+          "description": "Default bib file name"
+        }
+      }
+    }]
   },
   "scripts": {
     "lint": "eslint .",

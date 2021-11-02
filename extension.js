@@ -4,7 +4,8 @@ const vscode = require('vscode');
 const axios = require('axios');
 const path = require('path');
 const fs = require('fs');
-
+const json_rpc = 'http://localhost:23119/better-bibtex/json-rpc';
+const cayw = 'http://localhost:23119/better-bibtex/cayw';
 
 function showStatusMessage(message){
     vscode.window.setStatusBarMessage(message, 1500);
@@ -14,11 +15,67 @@ function showErrorMessage(message){
     vscode.window.showErrorMessage(message);
 }
 
-async function exportEntries(){
+function showInformationMessage(message){
+    vscode.window.showInformationMessage(message);
+}
+
+function bibliograpyStyle() {
+    return vscode.workspace.getConfiguration('zotero-cite').get('bibliograpyStyle', 'http://www.zotero.org/styles/apa');
+}
+
+
+function defaultBibName(){
+    return vscode.workspace.getConfiguration('zotero-cite').get('defaultBibName', 'ref.bib');
+}
+
+
+
+/**
+ * 返回键值列表
+ * @returns Array[String] Keys
+ */
+function getKeys(){
+    const editor = vscode.window.activeTextEditor;
+    const content = editor.document.getText();
+    const pattern = /\[[@^]([^\]]+)\]/g;
+
+    var m;
+    var keys = new Array();
+
+    do {
+        m = pattern.exec(content);
+        if(m){
+            keys.push(m[1]);
+        }
+    }while(m);
+
+    return keys;
+}
+
+
+function getLatexKeys(){
+    const editor = vscode.window.activeTextEditor;
+    const content = editor.document.getText();
+    const pattern = /\\cite\{([a-zA-Z,\s\d]+)\}/g;
+
+    var m;
+    var keys = new Array();
+
+    do {
+        m = pattern.exec(content);
+        if(m){
+            keys.concat(m[1].split(',').map(k => k.trim()));
+        }
+    }while(m);
+
+    return keys;
+
+}
+
+// 根据latex和markdown环境的不同，导出所有的bibliography到文件中
+async function exportBibLatex(){
     try{
         const editor = vscode.window.activeTextEditor;
-        const url = 'http://localhost:23119/better-bibtex/json-rpc';
-
         var currentlyOpenTabfilePath = editor.document.uri.fsPath;
         var bibName;
     
@@ -28,7 +85,7 @@ async function exportEntries(){
         }
         
         // Ask for bib file name
-        await vscode.window.showInputBox({value: 'ref.bib', prompt: 'File Name:'}).then(value => {
+        await vscode.window.showInputBox({value: defaultBibName(), prompt: 'File Name:'}).then(value => {
             bibName = value;
         });
         
@@ -43,58 +100,27 @@ async function exportEntries(){
         // Create bib Path
         var parentDir = path.dirname(currentlyOpenTabfilePath);
         var bibPath = path.join(parentDir, bibName);
-    
-        // Get the document text
-        const content = editor.document.getText();
-        const refPattern = /\[@(\w+)\]/g;
-        // const url = 'http://127.0.0.1:23119/better-bibtex/cayw?format=formatted-bibliography'+
-    
-        var m;
-        var keys = new Array();
-    
-        do {
-            m = refPattern.exec(content);
-            if(m){
-                var key = m[1];
-                keys.push(key);
-            }
-        }while(m);
         
+        // 获取键列表
+        var keys;
+
+        if(editor.document.languageId == 'markdown'){
+            // insert markdown citation
+            keys = getKeys();
+        }else{
+            keys = getLatexKeys();
+        }
+
         // No keys detected.
         if(keys.length == 0){
             throw new Error('No key detected.');
         }
-    
-        let pyload = JSON.stringify({
-            "jsonrpc": "2.0",
-            "method": "item.export",
-            "params": [
-                keys, "biblatex"
-            ]
-        });
-    
-        // requests bibliography
-        axios({
-            method: 'post',
-            url: url,
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            data: pyload
-        })
-        .then((res) => {
-            let data = res.data;
-            
-            if('error' in data){
-                let err = data['error'];
-                throw new Error(err['message']);
-            }
 
-            let bib = data['result'][2];
-            fs.writeFileSync(bibPath, bib, {
+        getBibliography(keys)
+        .then(res => {
+            fs.writeFileSync(bibPath, res, {
                 "encoding": "utf-8"
             });
-
             showStatusMessage('Export Successfully.');
         })
         .catch((err) => {
@@ -104,6 +130,213 @@ async function exportEntries(){
         showErrorMessage(err.message);
     }
 }
+
+/**
+ * 输入位置
+ * @param {string} text 插入文字
+ * @param {bool} end 是否插入结尾
+ */
+function enterText(text, end=false) {
+    const editor = vscode.window.activeTextEditor;
+    if (editor) {
+        editor.edit(editBuilder => {
+            if(end){
+                const lastLine = editor.document.lineAt(editor.document.lineCount - 1);
+                editBuilder.insert(
+                    new vscode.Position(lastLine.lineNumber + 1, 0),
+                    text
+                );
+            }else{
+                editBuilder.insert(editor.selection.active, text);
+            }
+        });
+    }
+}
+
+
+// 根据对话到选择目标key。
+async function pickCiteKey(){
+    // https://stackoverflow.com/questions/44182951/axios-chaining-multiple-api-requests
+
+    var citeKey;
+
+    await axios({
+        method: 'get',
+        url: cayw,
+        params: {
+            "format": "pandoc",
+            "brackets": "1"
+        }
+    })
+    .then(res => {
+        const pattern = /\[@([^\]]+)\]/g;
+        let m = pattern.exec(res.data);
+        if(m){
+            citeKey = m[1];
+        }
+    })
+    .catch(err => {
+        showErrorMessage(err.message);
+    });
+
+    return citeKey;
+}
+
+
+// 基于markdown的书写规则，插入引用[^key]
+async function citeMarkdownBibliography(){
+    // 获取键列表
+    var keys = getKeys();
+
+    // 获取键值
+    var citeKey = await pickCiteKey(); 
+
+    // insert markdown citation
+    const citeData = '[^'+citeKey+']';
+    enterText(citeData);
+    
+    if (keys.includes(citeKey)){
+        console.log(`${citeKey} exists.`)
+        return;
+    }
+
+    const pyload = JSON.stringify({
+        "jsonrpc": "2.0",
+        "method": "item.bibliography",
+        "params": [
+            ["@"+citeKey], 
+            {"id": bibliograpyStyle()}
+        ]
+    });
+    
+    // http://axios-js.com/zh-cn/docs/index.html
+    axios({
+        method: 'post',
+        url: json_rpc,
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        data: pyload
+    })
+    .then(res => {
+        const data = res.data;
+
+        if('error' in data){
+            let err = data['error'];
+            throw new Error(err['message']);
+        }
+
+        const result = data['result'];
+        const bibliographyText = citeData + ": " + result + "\n";
+        
+        // enter text to the file end.
+        enterText(bibliographyText, true);
+    })
+    .catch(err => {
+        showErrorMessage(err.message);
+    });
+}
+
+
+// 根据latex和markdown环境的不同，插入citation到当前位置
+// 以及bibliography到默认的bib文件中。
+async function citeBibliography(){
+    try{
+        const editor = vscode.window.activeTextEditor;
+        var currentlyOpenTabfilePath = editor.document.uri.fsPath;
+
+        // Current file tab is not saved.
+        if (currentlyOpenTabfilePath.indexOf('Untitled')!=-1){
+            throw new Error('Please SAVE Current Tab.');
+        }
+
+        // 得到bib文件的默认文件名
+        const bibName = defaultBibName();
+
+        if (bibName.length < 5 || path.extname(bibName)!='.bib'){
+            throw new Error('bibName is invalid or its length is less than 5.');
+        }
+
+        // Create bib Path
+        var parentDir = path.dirname(currentlyOpenTabfilePath);
+        var bibPath = path.join(parentDir, bibName);
+
+        // 获取键值
+        var citeKey = await pickCiteKey();
+
+        // 如果是markdown，则输入[@key]，如果是latex，则输入key。
+        // 其中\cite命令需要自己输入。
+        if(editor.document.languageId == 'latex'){
+            enterText(citeKey);
+        }else{
+            // insert markdown citation
+            enterText('[@'+citeKey+']');
+        }
+
+        // 获取键列表
+        var keys;
+
+        if(editor.document.languageId == 'markdown'){
+            // insert markdown citation
+            keys = getKeys();
+        }else{
+            keys = getLatexKeys();
+        }
+
+        // 如果已经包含了键，代表已经加入到bib文件中，不需要重新加入。
+        if (keys.includes(citeKey)){
+            console.log(keys);
+            return;
+        }
+        
+        // 添加bibliography
+        getBibliography([citeKey])
+        .then(res => {
+            fs.writeFileSync(
+                bibPath, res, {
+                    flag: 'a',
+                    encoding: 'utf8'
+            });
+        })
+        .catch(err => {
+            showErrorMessage(err.message);
+        }) 
+    }catch(err){
+        showErrorMessage(err.message);
+    }
+}
+
+
+// 根据引用的key列表获取bibliography列表
+async function getBibliography(keys){
+    let pyload = JSON.stringify({
+        "jsonrpc": "2.0",
+        "method": "item.export",
+        "params": [
+            keys, "biblatex"
+        ]
+    });
+
+    // requests bibliography
+    return axios({
+        method: 'post',
+        url: json_rpc,
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        data: pyload
+    })
+    .then((res) => {
+        let data = res.data;
+        
+        if('error' in data){
+            let err = data['error'];
+            throw new Error(err['message']);
+        }
+        return data['result'][2];
+    });
+}
+
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -115,14 +348,30 @@ function activate(context) {
 
 	// Use the console to output diagnostic information (console.log) and errors (console.error)
 	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "zotero-export" is now active!');
+	console.log('Congratulations, your extension "zotero-cite" is now active!');
 
 	// The command has been defined in the package.json file
 	// Now provide the implementation of the command with  registerCommand
 	// The commandId parameter must match the command field in package.json
-	let disposable = vscode.commands.registerCommand('zotero-export.exportEntries', exportEntries);
+    const commands = [
+        {
+            "id": "zotero-cite.exportBibLatex",
+            "command": exportBibLatex
+        },
+        {
+            "id": "zotero-cite.citeBibliography",
+            "command": citeBibliography
+        },
+        {
+            "id": "zotero-cite.citeMarkdownBibliography",
+            "command": citeMarkdownBibliography
+        }
+    ]
 
-	context.subscriptions.push(disposable);
+    commands.forEach( command => {
+        let disposable = vscode.commands.registerCommand(command.id, command.command);
+        context.subscriptions.push(disposable);
+    });
 }
 
 // this method is called when your extension is deactivated
