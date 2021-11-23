@@ -15,6 +15,7 @@
   ],
   "activationEvents": [
     "onCommand:zotero-cite.exportBibLatex",
+    "onCommand:zotero-cite.addCitation",
     "onCommand:zotero-cite.citeBibliography",
     "onCommand:zotero-cite.citeMarkdownBibliography"
   ],
@@ -26,18 +27,26 @@
         "title": "Zotero: Export BibLatex"
       },
       {
+        "command": "zotero-cite.addCitation",
+        "title": "Zotero: Add Citation for Pandoc/Latex"
+      },
+      {
         "command": "zotero-cite.citeBibliography",
-        "title": "Zotero: Cite and Create Pandoc/LaTeX Bibliography"
+        "title": "Zotero: Cite and Create Bibliography for Pandoc/LaTeX "
       },
       {
         "command": "zotero-cite.citeMarkdownBibliography",
-        "title": "Zotero: Cite and Create Markdown Bibliography"
+        "title": "Zotero: Cite and Create Bibliography for Markdown"
       }
     ],
     "menus": {
       "commandPalette": [
         {
           "command": "zotero-cite.exportBibLatex",
+          "when": "editorLangId == 'latex' || editorLangId == 'markdown'"
+        },
+        {
+          "command": "zotero-cite.addCitation",
           "when": "editorLangId == 'latex' || editorLangId == 'markdown'"
         },
         {

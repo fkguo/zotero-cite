@@ -253,6 +253,28 @@ function getBibliographyKey(bibPath){
 }
 
 
+/**
+ * 仅仅添加citekey，而不添加bibentry。
+ */
+async function addCitation(){
+    try{
+        // 获取键值
+        var citeKey = await pickCiteKey();
+
+        // 如果是markdown，则输入[@key]，如果是latex，则输入key。
+        // 其中\cite命令需要自己输入。
+        if(editor.document.languageId == 'latex'){
+            enterText(citeKey);
+        }else{
+            // insert markdown citation
+            enterText('[@'+citeKey+']');
+        }
+    }catch(err){
+        showErrorMessage(err.message);
+    }
+}
+
+
 // 根据latex和markdown环境的不同，插入citation到当前位置
 // 以及bibliography到默认的bib文件中。
 async function citeBibliography(){
@@ -365,6 +387,10 @@ function activate(context) {
         {
             "id": "zotero-cite.exportBibLatex",
             "command": exportBibLatex
+        },
+        {
+            "id": "zotero-cite.addCitation",
+            "command": addCitation
         },
         {
             "id": "zotero-cite.citeBibliography",
