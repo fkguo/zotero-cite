@@ -258,6 +258,8 @@ function getBibliographyKey(bibPath){
  */
 async function addCitation(){
     try{
+        const editor = vscode.window.activeTextEditor;
+        
         // 获取键值
         var citeKey = await pickCiteKey();
 
