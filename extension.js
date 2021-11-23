@@ -162,6 +162,8 @@ async function pickCiteKey(){
         
         if(m){
             citeKey = m[1];
+        }else{
+            throw new Error('No item is selected.');
         }
     })
     .catch(err => {
