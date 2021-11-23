@@ -33,3 +33,8 @@ In the editing process of pandoc and latex files, through Zotero's citation sele
 - 2021-11-02: Change the name of the zotero-export plugin to export-cite, optimize the function of exporting bibliography to a file, and make it support the latex environment. At the same time, the two commands `zotero-cite.citeBibliography` and `zotero-cite.citeMarkdownBibliography` have been added, so that the bibliography can be inserted into the default file while inserting the reference.[^parkPreciselyShapedUniformly2018]: Park, J.-E., Lee, Y., & Nam, J.-M. (2018). Precisely Shaped, Uniformly Formed Gold Nanocubes with Ultrahigh Reproducibility in Single-Particle Scattering and Surface-Enhanced Raman Scattering. Nano Letters, 18(10), 6475–6482. https://doi.org/10.1021/acs.nanolett.8b02973
 
 - 2021-11-23: Throw new Error if no item is selected when use the pandoc/latex citation command.
+
+# tutorial video
+
+link：https://pan.baidu.com/s/1NxxaYGO-BIbjY8X1QwWhSQ 
+code：ax1j
