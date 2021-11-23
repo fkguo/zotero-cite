@@ -162,13 +162,16 @@ async function pickCiteKey(){
         
         if(m){
             citeKey = m[1];
-        }else{
-            throw new Error('No item is selected.');
         }
     })
     .catch(err => {
         showErrorMessage(err.message);
     });
+
+    // 代表没有选择item，抛出异常。
+    if (citeKey === undefined){
+        throw new Error('No item is selected.');
+    }
 
     return citeKey;
 }
