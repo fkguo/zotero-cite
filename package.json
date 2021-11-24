@@ -10,7 +10,7 @@
   "engines": {
     "vscode": "^1.61.0"
   },
-  "icon": "images/zotero.jpg",
+  "icon": "images/zotero.png",
   "categories": [
     "Other"
   ],
