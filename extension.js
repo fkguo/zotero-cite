@@ -90,7 +90,7 @@ async function exportBibLatex(){
         // 去除重复的问题
         var uniqueKeys = Array.from(new Set(keys));
 
-        // No keys detected.
+        // 代表不需要导出
         if(uniqueKeys.length == 0){
             throw new Error('No key detected.');
         }
@@ -110,44 +110,53 @@ async function exportBibLatex(){
     }
 }
 
+
 /**
- * 输入位置
- * @param {string} text 插入文字
- * @param {bool} end 是否插入结尾
+ * 将文字输入到目标位置
+ * @param {string} text 要输入的文字
+ * @param {int} location 输入的位置，-1代表当前位置，-2代表最尾行，其他的代表目标位置
  */
-function enterText(text, end=false) {
+function insertText(text, location=-1){
     const editor = vscode.window.activeTextEditor;
-    if (editor) {
-        editor.edit(editBuilder => {
-            if(end){
-                const lastLine = editor.document.lineAt(editor.document.lineCount - 1);
-                editBuilder.insert(
-                    new vscode.Position(lastLine.lineNumber + 1, 0),
-                    text
-                );
-            }else{
-                editBuilder.insert(editor.selection.active, text);
-            }
-        });
-    }
+    editor.edit(editBuilder => {
+        if(location == -1){
+            editBuilder.insert(editor.selection.active, text);
+        }
+        else if(location == -2){
+            const lastLine = editor.document.lineAt(editor.document.lineCount - 1);
+            editBuilder.insert(
+                new vscode.Position(lastLine.lineNumber + 1, 0),
+                text
+            );
+        }else{
+            var position = editor.document.positionAt(location);
+            editBuilder.insert(position, text);
+        }
+    });
 }
+
 
 
 /**
  * https://stackoverflow.com/questions/44182951/axios-chaining-multiple-api-requests
+ * https://retorque.re/zotero-better-bibtex/citing/cayw/
  * 返回key数组
  * @returns string[]
  */
 async function pickCiteKeys(){
     var citeKeys = [];
+    // params: {
+    //     "format": "pandoc",
+    //     "brackets": "1",
+    //     "minimize": 'true'
+    // }
 
     await axios({
         method: 'get',
         url: cayw,
         params: {
             "format": "pandoc",
-            "brackets": "1",
-            "minimize": 'true'
+            "brackets": "1"
         }
     })
     .then(res => {
@@ -186,7 +195,7 @@ async function citeMarkdownBibliography(){
         var citeKeys = await pickCiteKeys(); 
     
         // insert markdown citation
-        enterText('[^' + citeKeys.join('][^') + ']');
+        insertText('[^' + citeKeys.join('][^') + ']');
         
         // 插入插入bibliography，并过滤已经插入的
         citeKeys.forEach(e => {
@@ -230,10 +239,10 @@ function insertMarkdownBibliography(citeKey){
             throw new Error(err['message']);
         }
 
-        const bibliographyText = '\n[^' + citeKey + "]: " + data['result'];
+        const bibliographyText = '[^' + citeKey + "]: " + data['result'];
         
         // enter text to the file end.
-        enterText(bibliographyText, true);
+        insertText(bibliographyText, -2);
     })
     .catch(err => {
         showErrorMessage(err.message);
@@ -268,22 +277,38 @@ function getBibliographyKeyFromFile(bibPath){
  */
 async function addCitation(){
     try{
-        const editor = vscode.window.activeTextEditor;
-        
-        // get keys
-        var citeKey = await pickCiteKeys();
-
-        // insert latex citation。
-        if(editor.document.languageId == 'latex'){
-            enterText(citeKey.join(', '));
-        }
-        
-        // insert pandoc citation
-        if(editor.document.languageId == 'markdown'){
-            enterText('[' + citeKey.map( v => '@' + v).join('; ') + ']');
-        }
+        var citeKeys = await pickCiteKeys();
+        insertCiteKeys(citeKeys);
     }catch(err){
         showErrorMessage(err.message);
+    }
+}
+
+
+/**
+ * 将key数组插入到文档中
+ * @param {string[]} keyList key数组
+ */
+function insertCiteKeys(keyList){
+    const editor = vscode.window.activeTextEditor;
+    var addLocation = getKeyEnvOffset();
+
+    // insert latex citation。
+    if(editor.document.languageId == 'latex'){
+        if(addLocation == null){
+            insertText('\\cite{'+keyList.join(', ') + '}');
+        }else{
+            insertText(', ' + keyList.join(', '), addLocation-1);
+        }
+    }
+    
+    // insert pandoc citation
+    if(editor.document.languageId == 'markdown'){
+        if(addLocation == null){
+            insertText('[' + keyList.map( v => '@' + v).join('; ') + ']');
+        }else{
+            insertText('; ' + keyList.map( v => '@' + v).join('; '), addLocation-1);
+        }
     }
 }
 
@@ -313,26 +338,21 @@ async function citeBibliography(){
         var bibPath = path.join(parentDir, bibName);
         
         // get selected keys
-        var citeKey = await pickCiteKeys();
-
-        // todo: 这一块后面后边需要增加边缘检测的功能，即如果是在引用里边，应该怎么增加，否则应该增幅么增加。
-        // insert latex citation。
-        if(editor.document.languageId == 'latex'){
-            enterText(citeKey.join(', '));
-        }
-
-        // insert pandoc citation
-        if(editor.document.languageId == 'markdown'){
-            enterText('[' + citeKey.map( v => '@' + v).join('; ') + ']');
-        }
+        var citeKeys = await pickCiteKeys();
+        insertCiteKeys(citeKeys);
 
         // 根据bib文件，而不是cite去获取keys。
         var bibKeys = getBibliographyKeyFromFile(bibPath);
         
         // 过滤已经包含的引用
-        var uKeys = citeKey.filter((v, i) => ! bibKeys.includes(v));
+        var uniqueKeys = citeKeys.filter((v, i) => ! bibKeys.includes(v));
 
-        getBibliography(uKeys)
+        // 如果为空，代表不需要添加内容的bib文件里边
+        if(uniqueKeys.length == 0){
+            return;
+        }
+
+        getBibliography(uniqueKeys)
         .then(res => {
             fs.writeFileSync(
                 bibPath, res, {
@@ -363,6 +383,8 @@ async function getBibliography(keys){
         ]
     });
 
+    console.log(pyload);
+
     // requests bibliography
     return axios({
         method: 'post',
@@ -374,11 +396,12 @@ async function getBibliography(keys){
     })
     .then((res) => {
         let data = res.data;
-        
+
         if('error' in data){
             let err = data['error'];
             throw new Error(err['message']);
         }
+
         return data['result'][2];
     });
 }
@@ -416,6 +439,44 @@ function getCiteKeyList(keyMatchList){
         })
     });
     return citeKeyList;
+}
+
+
+/**
+ * 判断鼠标是否在键的环境中，是的话，返回环境的end index，否则为null
+ * @returns 键的offset
+ */
+function getKeyEnvOffset(){
+    const editor = vscode.window.activeTextEditor;
+    const content = editor.document.getText();
+    var p;
+    var cursorLocation = editor.document.offsetAt(editor.selection.active);
+
+    if (editor.document.languageId == 'markdown'){
+        p = /\[([@^][\w\d]+(;| ){0,2})+\]/g;
+    }
+
+    if (editor.document.languageId == 'latex'){
+        p = /cite\{([\w\d]+(,| ){0,2})+\}/g;
+    }
+
+    if (p == null){
+        return p;
+    }
+
+    var matches = getMatchList(p, content);
+    for (const key in matches) {
+        if (Object.hasOwnProperty.call(matches, key)) {
+            const m = matches[key];
+            let startIndex = m.index;
+            let endIndex = m.index + m[0].length;
+            if(cursorLocation >= startIndex && cursorLocation <= endIndex){
+                return endIndex;
+            }
+        }
+    }
+
+    return null;
 }
 
 
