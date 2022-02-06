@@ -25,19 +25,19 @@
     "commands": [
       {
         "command": "zotero-cite.exportBibLatex",
-        "title": "Zotero: Export BibLatex"
+        "title": "Zotero Cite: Export BibLatex"
       },
       {
         "command": "zotero-cite.addCitation",
-        "title": "Zotero: Add Citation for Pandoc/Latex"
+        "title": "Zotero Cite: Add Citation for Pandoc/Latex"
       },
       {
         "command": "zotero-cite.citeBibliography",
-        "title": "Zotero: Cite and Create Bibliography for Pandoc/LaTeX "
+        "title": "Zotero Cite: Cite and Create Bibliography for Pandoc/LaTeX "
       },
       {
         "command": "zotero-cite.citeMarkdownBibliography",
-        "title": "Zotero: Cite and Create Bibliography for Markdown"
+        "title": "Zotero Cite: Cite and Create Bibliography for Markdown"
       }
     ],
     "menus": {

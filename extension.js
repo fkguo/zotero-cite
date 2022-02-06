@@ -31,27 +31,27 @@ function defaultBibName(){
 }
 
 
+
 /**
- * 根据pattern，从当前文档，获取regex的key列表
- * @param {*} RegExp 
- * @returns Key列表
+ * 获取文档中引用的键列表
  */
-function getKeysFromDocument(re){
+function getDocumentCiteKeys(){
     const editor = vscode.window.activeTextEditor;
     const content = editor.document.getText();
+    var p;
 
-    let m;
-    var keys = new Array();
+    if (editor.document.languageId == 'markdown'){
+        p = /\[([@^][\w\d]+(;| ){0,2})+\]/g;
+    }
 
-    do {
-        m = re.exec(content);
+    if (editor.document.languageId == 'latex'){
+        p = /cite\{([\w\d]+(,| ){0,2})+\}/g;
+    }
 
-        if(m){
-            keys = keys.concat(m[1].split(',').map(k => k.trim()));
-        }
-    }while(m);
-
-    return keys;
+    if (p != null){
+        var ms = getMatchList(p, content);
+        return getCiteKeyList(ms);
+    }
 }
 
 
@@ -85,15 +85,7 @@ async function exportBibLatex(){
         var bibPath = path.join(parentDir, bibName);
         
         // 获取键列表
-        var re;
-
-        if (editor.document.languageId == 'markdown'){
-            re = new RegExp(/\[[@^]([^\]]+)\]/g);
-        }else{
-            re = new RegExp(/\\cite\{([a-zA-Z,\s\d]+)\}/g);
-        }
-
-        const keys = getKeysFromDocument(re);
+        const keys = getDocumentCiteKeys();
 
         // 去除重复的问题
         var uniqueKeys = Array.from(new Set(keys));
@@ -141,11 +133,13 @@ function enterText(text, end=false) {
 }
 
 
-// 根据对话到选择目标key。
-async function pickCiteKey(){
-    // https://stackoverflow.com/questions/44182951/axios-chaining-multiple-api-requests
-
-    var citeKey;
+/**
+ * https://stackoverflow.com/questions/44182951/axios-chaining-multiple-api-requests
+ * 返回key数组
+ * @returns string[]
+ */
+async function pickCiteKeys(){
+    var citeKeys = [];
 
     await axios({
         method: 'get',
@@ -157,11 +151,10 @@ async function pickCiteKey(){
         }
     })
     .then(res => {
-        const pattern = /\[@([^\]]+)\]/g;
-        let m = pattern.exec(res.data);
-        
-        if(m){
-            citeKey = m[1];
+        // const pattern = /\[@([^\]]+)\]/g;
+        const pattern = /@([\w\d]+)/g;
+        while((m = pattern.exec(res.data)) != null){
+            citeKeys.push(m[1])
         }
     })
     .catch(err => {
@@ -169,75 +162,91 @@ async function pickCiteKey(){
     });
 
     // 代表没有选择item，抛出异常。
-    if (citeKey === undefined){
+    if (citeKeys.length == 0){
         throw new Error('No item is selected.');
     }
 
-    return citeKey;
+    return citeKeys;
 }
 
 
-// 基于markdown的书写规则，插入引用[^key]
+/**
+ * 对于markdown文件的书写，选择key，然后插入bibliography，
+ * key的格式为：[^k1][^k2]
+ * bibliography的格式：
+ *   [^k1]: content
+ *   [^k2]: content
+ */
 async function citeMarkdownBibliography(){
     try{
         // 获取键列表
-        var re = new RegExp(/\[\^([a-zA-Z\d]+)\]:\s/g);
-        var keys = getKeysFromDocument(re);
+        var existKeys = getDocumentCiteKeys();
     
         // 获取键值
-        var citeKey = await pickCiteKey(); 
+        var citeKeys = await pickCiteKeys(); 
     
         // insert markdown citation
-        const citeData = '[^'+citeKey+']';
-        enterText(citeData);
-    
-        if (keys.includes(citeKey)){
-            console.log(`${citeKey} exists.`)
-            return;
-        }
-    
-        const pyload = JSON.stringify({
-            "jsonrpc": "2.0",
-            "method": "item.bibliography",
-            "params": [
-                ["@"+citeKey], 
-                {"id": bibliograpyStyle()}
-            ]
-        });
+        enterText('[^' + citeKeys.join('][^') + ']');
         
-        // http://axios-js.com/zh-cn/docs/index.html
-        axios({
-            method: 'post',
-            url: json_rpc,
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            data: pyload
-        })
-        .then(res => {
-            const data = res.data;
-    
-            if('error' in data){
-                let err = data['error'];
-                throw new Error(err['message']);
+        // 插入插入bibliography，并过滤已经插入的
+        citeKeys.forEach(e => {
+            if(!existKeys.includes(e)){
+                insertMarkdownBibliography(e)
             }
-    
-            const result = data['result'];
-            const bibliographyText = citeData + ": " + result + "\n";
-            
-            // enter text to the file end.
-            enterText(bibliographyText, true);
-        })
-        .catch(err => {
-            showErrorMessage(err.message);
         });
+    
     }catch(err){
         showErrorMessage(err.message);
     }
 }
 
+/**
+ * 根据item的key，插入markdown格式的bibliography
+ * @param {string} citeKey item的Key
+ */
+function insertMarkdownBibliography(citeKey){
+    const pyload = JSON.stringify({
+        "jsonrpc": "2.0",
+        "method": "item.bibliography",
+        "params": [
+            ["@"+citeKey], 
+            {"id": bibliograpyStyle()}
+        ]
+    });
 
-function getBibliographyKey(bibPath){
+    axios({
+        method: 'post',
+        url: json_rpc,
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        data: pyload
+    })
+    .then(res => {
+        const data = res.data;
+
+        if('error' in data){
+            let err = data['error'];
+            throw new Error(err['message']);
+        }
+
+        const bibliographyText = '\n[^' + citeKey + "]: " + data['result'];
+        
+        // enter text to the file end.
+        enterText(bibliographyText, true);
+    })
+    .catch(err => {
+        showErrorMessage(err.message);
+    });
+}
+
+
+/**
+ * 根据bib文件的路径，获取其中的bibentry的key数组
+ * @param {string} bibPath bib文件的路径
+ * @returns string[]
+ */
+function getBibliographyKeyFromFile(bibPath){
     // 代表文件不存在，返回空数组
     if (!fs.existsSync(bibPath)){
         return new Array();
@@ -254,22 +263,24 @@ function getBibliographyKey(bibPath){
 
 
 /**
- * 仅仅添加citekey，而不添加bibentry。
+ * todo: 给该函数添加智能检测功能
+ * 给pandoc以及latex添加citation，不添加bibentry
  */
 async function addCitation(){
     try{
         const editor = vscode.window.activeTextEditor;
         
-        // 获取键值
-        var citeKey = await pickCiteKey();
+        // get keys
+        var citeKey = await pickCiteKeys();
 
-        // 如果是markdown，则输入[@key]，如果是latex，则输入key。
-        // 其中\cite命令需要自己输入。
+        // insert latex citation。
         if(editor.document.languageId == 'latex'){
-            enterText(citeKey);
-        }else{
-            // insert markdown citation
-            enterText('[@'+citeKey+']');
+            enterText(citeKey.join(', '));
+        }
+        
+        // insert pandoc citation
+        if(editor.document.languageId == 'markdown'){
+            enterText('[' + citeKey.map( v => '@' + v).join('; ') + ']');
         }
     }catch(err){
         showErrorMessage(err.message);
@@ -277,8 +288,9 @@ async function addCitation(){
 }
 
 
-// 根据latex和markdown环境的不同，插入citation到当前位置
-// 以及bibliography到默认的bib文件中。
+/**
+ * 给pandoc以及latex添加citation以及bibliography
+ */
 async function citeBibliography(){
     try{
         const editor = vscode.window.activeTextEditor;
@@ -300,29 +312,27 @@ async function citeBibliography(){
         var parentDir = path.dirname(currentlyOpenTabfilePath);
         var bibPath = path.join(parentDir, bibName);
         
-        // 获取键值
-        var citeKey = await pickCiteKey();
+        // get selected keys
+        var citeKey = await pickCiteKeys();
 
-        // 如果是markdown，则输入[@key]，如果是latex，则输入key。
-        // 其中\cite命令需要自己输入。
+        // todo: 这一块后面后边需要增加边缘检测的功能，即如果是在引用里边，应该怎么增加，否则应该增幅么增加。
+        // insert latex citation。
         if(editor.document.languageId == 'latex'){
-            enterText(citeKey);
-        }else{
-            // insert markdown citation
-            enterText('[@'+citeKey+']');
+            enterText(citeKey.join(', '));
+        }
+
+        // insert pandoc citation
+        if(editor.document.languageId == 'markdown'){
+            enterText('[' + citeKey.map( v => '@' + v).join('; ') + ']');
         }
 
         // 根据bib文件，而不是cite去获取keys。
-        var bibKeys = getBibliographyKey(bibPath);
-
-        // 如果已经包含了键，代表已经加入到bib文件中，不需要重新加入。
-        if (bibKeys.includes(citeKey)){
-            console.log(citeKey);
-            return;
-        }
+        var bibKeys = getBibliographyKeyFromFile(bibPath);
         
-        // 添加bibliography
-        getBibliography([citeKey])
+        // 过滤已经包含的引用
+        var uKeys = citeKey.filter((v, i) => ! bibKeys.includes(v));
+
+        getBibliography(uKeys)
         .then(res => {
             fs.writeFileSync(
                 bibPath, res, {
@@ -339,7 +349,11 @@ async function citeBibliography(){
 }
 
 
-// 根据引用的key列表获取bibliography列表
+/**
+ * 根据key列表获取bibliography列表
+ * @param {string} keys key列表
+ * @returns string
+ */
 async function getBibliography(keys){
     let pyload = JSON.stringify({
         "jsonrpc": "2.0",
@@ -367,6 +381,41 @@ async function getBibliography(keys){
         }
         return data['result'][2];
     });
+}
+
+
+/**
+ * 输入一段正则表达式以及文字，导出匹配的列表
+ * 匹配引用键的正则：var p = /\[([@^][\w\d]+(; )?)+\]/g;
+ * @param {pattern} pattern 正则表达式
+ * @param {string} text 需要解析的文字
+ * @returns 匹配的列表
+ */
+ function getMatchList(pattern, text){
+    var matchList = []
+    while ((m = pattern.exec(text)) != null){
+        matchList.push(m);
+    }
+    return matchList;
+}
+
+/**
+ * 根据key的匹配列表，返回key列表
+ * @param {match} keyMatchList 匹配的列表
+ * @returns key数组
+ */
+function getCiteKeyList(keyMatchList){
+    var citeKeyList = [];
+    keyMatchList.forEach( (v, i) => {
+        // 处理latex的情况
+        var a = v[0].replace(/^cite/, '');
+        var p = /(\w|\d)+/g;
+        var keyMatches = getMatchList(p, a);
+        keyMatches.forEach( (vi, ii) => {
+            citeKeyList.push(vi[0]);
+        })
+    });
+    return citeKeyList;
 }
 
 
