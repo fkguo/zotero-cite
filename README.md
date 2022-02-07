@@ -11,7 +11,8 @@ In the process of writing markdown, pandoc (.md suffix) and latex files, if you 
 
 Query the currently edited markdown, pandoc or latex document, based on its environment, and export the citation to the bib document according to the cited key.
 
-![](images/export%20bibliography.gif)
+
+![](https://gitee.com/rusterx/zotero-cite/raw/master/images/export%20bibliography.gif)
 
 # Zotero Cite: Add Citation for Pandoc/Latex
 
@@ -19,7 +20,7 @@ Query the currently edited markdown, pandoc or latex document, based on its envi
 
 If you want to insert citations during the writing process of pandoc and latex documents, but do not want to update the bib file, then this function is more suitable for you.
 
-![](images/add%20citation%20for%20pandoc%20and%20latex.gif)
+![](https://gitee.com/rusterx/zotero-cite/raw/master/images/add%20citation%20for%20pandoc%20and%20latex.gif)
 
 # Zotero Cite: Cite and Create Bibliography for Pandoc/LaTeX
 
@@ -27,7 +28,7 @@ If you want to insert citations during the writing process of pandoc and latex d
 
 If you want to update the bib file while inserting citations during the writing process of pandoc and latex documents, then this function is more suitable for you.
 
-![](images/add%20citation%20and%20add%20bibliography%20for%20pandoc%20and%20latex.gif)
+![](https://gitee.com/rusterx/zotero-cite/raw/master/images/add%20citation%20and%20add%20bibliography%20for%20pandoc%20and%20latex.gif)
 
 # Zotero Cite: Cite and Create Bibliography for Markdown
 
@@ -35,7 +36,7 @@ If you want to update the bib file while inserting citations during the writing 
 
 If you want to update the footnotes while inserting the citation during the writing process of the markdown document, then this function is more suitable for you.
 
-![](images/add%20citation%20and%20add%20bibliography%20for%20markdown.gif)
+![](https://gitee.com/rusterx/zotero-cite/raw/master/images/add%20citation%20and%20add%20bibliography%20for%20markdown.gif)
 
 # Revision history
 
