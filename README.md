@@ -38,6 +38,7 @@ If you want to update the footnotes while inserting the citation during the writ
 
 - 2022-02-06： 对zotero-cite进行了全面的修改，使其可以支持markdown、pandoc以及latex环境的引用插入。可以智能的识别当前鼠标的位置是否在引用环境中，从而决定是应该直接插入，还是采用新增的方式插入引用。
 
+- 2022-02-07：优化pandoc以及latex文件的插入引用函数，消耗资源更少。
 
 # Tutorial video
 

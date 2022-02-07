@@ -286,7 +286,7 @@ async function addCitation(){
 
 
 /**
- * 将key数组插入到文档中
+ * 在pandoc以及latex文档编写过程中，将key数组插入到文档中
  * @param {string[]} keyList key数组
  */
 function insertCiteKeys(keyList){
@@ -448,7 +448,8 @@ function getCiteKeyList(keyMatchList){
  */
 function getKeyEnvOffset(){
     const editor = vscode.window.activeTextEditor;
-    const content = editor.document.getText();
+    // const content = editor.document.getText();
+    const data = getCursorRoundText();
     var p;
     var cursorLocation = editor.document.offsetAt(editor.selection.active);
 
@@ -464,12 +465,12 @@ function getKeyEnvOffset(){
         return p;
     }
 
-    var matches = getMatchList(p, content);
+    var matches = getMatchList(p, data.content);
     for (const key in matches) {
         if (Object.hasOwnProperty.call(matches, key)) {
             const m = matches[key];
-            let startIndex = m.index;
-            let endIndex = m.index + m[0].length;
+            let startIndex = m.index + data.startIndex;
+            let endIndex = m.index + m[0].length + data.startIndex;
             if(cursorLocation >= startIndex && cursorLocation <= endIndex){
                 return endIndex;
             }
@@ -477,6 +478,33 @@ function getKeyEnvOffset(){
     }
 
     return null;
+}
+
+
+/**
+ * 获取鼠标前后目标长度的文字内容
+ * @param {int} length 取字范围
+ * @returns 目标文字
+ */
+function getCursorRoundText(length = 50){
+    const editor = vscode.window.activeTextEditor;
+    var textLength = editor.document.getText().length;
+
+    if (editor.selection.isEmpty) {
+        const cursorPosition = editor.selection.active;
+        const cursorIndex = editor.document.offsetAt(cursorPosition);
+
+        const startIndex = Math.max(cursorIndex - length, 0);
+        const endIndex = Math.min(cursorIndex + length, textLength);
+
+        const startPos = editor.document.positionAt(startIndex);
+        const endPos = editor.document.positionAt(endIndex);
+        
+        var objectRange = new vscode.Range(startPos, endPos);
+        var objectText = editor.document.getText(objectRange);
+
+        return {'startIndex': startIndex, 'content': objectText};
+    }
 }
 
 
