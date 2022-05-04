@@ -18,7 +18,8 @@
     "onCommand:zotero-cite.exportBibLatex",
     "onCommand:zotero-cite.addCitation",
     "onCommand:zotero-cite.citeBibliography",
-    "onCommand:zotero-cite.citeMarkdownBibliography"
+    "onCommand:zotero-cite.citeMarkdownBibliography",
+    "onCommand:zotero-cite.addHyperLinkCitation"
   ],
   "main": "./extension.js",
   "contributes": {
@@ -38,6 +39,10 @@
       {
         "command": "zotero-cite.citeMarkdownBibliography",
         "title": "Zotero Cite: Cite and Create Bibliography for Markdown"
+      },
+      {
+        "command": "zotero-cite.addHyperLinkCitation",
+        "title": "Zotero Cite: Cite Hyperlink"
       }
     ],
     "menus": {
@@ -57,6 +62,10 @@
         {
           "command": "zotero-cite.citeMarkdownBibliography",
           "when": "editorLangId == 'latex' || editorLangId == 'markdown'"
+        },
+        {
+          "command": "zotero-cite.addHyperLinkCitation",
+          "when": "editorLangId == 'markdown'"
         }
       ]
     },

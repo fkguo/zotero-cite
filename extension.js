@@ -136,6 +136,25 @@ function insertText(text, location=-1){
 }
 
 
+async function insertTextAsync(text, location=-1){
+    const editor = vscode.window.activeTextEditor;
+    await editor.edit(editBuilder => {
+        if(location == -1){
+            editBuilder.insert(editor.selection.active, text);
+        }
+        else if(location == -2){
+            const lastLine = editor.document.lineAt(editor.document.lineCount - 1);
+            editBuilder.insert(
+                new vscode.Position(lastLine.lineNumber + 1, 0),
+                text
+            );
+        }else{
+            var position = editor.document.positionAt(location);
+            editBuilder.insert(position, text);
+        }
+    });
+}
+
 
 /**
  * https://stackoverflow.com/questions/44182951/axios-chaining-multiple-api-requests
@@ -507,6 +526,41 @@ function getCursorRoundText(length = 50){
     }
 }
 
+function makeid(length) {
+    var result           = '';
+    var characters       = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    var charactersLength = characters.length;
+    for ( var i = 0; i < length; i++ ) {
+      result += characters.charAt(Math.floor(Math.random() * charactersLength));
+   }
+   return result;
+}
+
+
+//将超链接设置为引用
+// https://stackoverflow.com/questions/54632431/vscode-api-read-clipboard-text-content
+async function addHyperLinkCitation(){
+    const editor = vscode.window.activeTextEditor;
+    // 从剪切板获取内容
+    let clipboard_content = await vscode.env.clipboard.readText(); 
+
+    if (clipboard_content == ''){
+        showErrorMessage('No Data in Clipboard.');
+        return;
+    }
+
+    //1. 生成一个随机字符串
+    var key = makeid(8);
+    var keyContent = `[^${key}]`;
+    var appContent = `\n[^${key}]: <${clipboard_content}>`;
+
+    // insert pandoc citation
+    if(editor.document.languageId == 'markdown'){
+        await insertTextAsync(keyContent);
+        await insertTextAsync(appContent, -2);
+    }
+}
+
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -539,6 +593,10 @@ function activate(context) {
         {
             "id": "zotero-cite.citeMarkdownBibliography",
             "command": citeMarkdownBibliography
+        },
+        {
+            "id": "zotero-cite.addHyperLinkCitation",
+            "command": addHyperLinkCitation
         }
     ]
 
