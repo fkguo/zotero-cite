@@ -9,6 +9,8 @@ const bibtexParse = require('@orcid/bibtex-parse-js');
 const json_rpc = 'http://localhost:23119/better-bibtex/json-rpc';
 const cayw = 'http://localhost:23119/better-bibtex/cayw';
 
+let latastBibName = '';
+
 function showStatusMessage(message){
     vscode.window.setStatusBarMessage(message, 1500);
 }
@@ -27,7 +29,10 @@ function bibliograpyStyle() {
 
 
 function defaultBibName(){
-    return vscode.workspace.getConfiguration('zotero-cite').get('defaultBibName', 'ref.bib');
+    if (latastBibName == '') {
+        latastBibName = vscode.workspace.getConfiguration('zotero-cite').get('defaultBibName', 'ref.bib');
+    }
+    return latastBibName
 }
 
 
@@ -101,6 +106,9 @@ async function exportBibLatex(){
                 "encoding": "utf-8"
             });
             showStatusMessage('Export Successfully.');
+            
+            // 如果用户重新输入了bib文件名，那么就更新保持最后修改的名称
+            latastBibName = bibName;
         })
         .catch((err) => {
             showErrorMessage(err.message);
