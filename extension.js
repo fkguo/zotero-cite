@@ -9,6 +9,8 @@ const bibtexParse = require('@orcid/bibtex-parse-js');
 const json_rpc = 'http://localhost:23119/better-bibtex/json-rpc';
 const cayw = 'http://localhost:23119/better-bibtex/cayw';
 
+let latastBibName = '';
+
 function showStatusMessage(message) {
     vscode.window.setStatusBarMessage(message, 1500);
 }
@@ -26,7 +28,7 @@ function bibliograpyStyle() {
 }
 
 
-function defaultBibName() {
+function defaultBibName(){
     return vscode.workspace.getConfiguration('zotero-cite').get('defaultBibName', 'ref.bib');
 }
 
@@ -44,8 +46,8 @@ function getDocumentCiteKeys() {
         p = /\[([@^][\w\d]+(;| ){0,2})+\]/g;
     }
 
-    if (editor.document.languageId == 'latex') {
-        p = /cite\{([\w\d]+(,| ){0,2})+\}/g;
+    if (editor.document.languageId == 'latex'){
+        p = /cite(\[[^\]]*\])?\{([\w\d]+(,| ){0,2})+\}/g;
     }
 
     if (p != null) {
@@ -99,16 +101,16 @@ async function exportBibLatex() {
         }
 
         getBibliography(uniqueKeys)
-            .then(res => {
-                fs.writeFileSync(bibPath, res, {
-                    "encoding": "utf-8"
-                });
-                showStatusMessage('Export Successfully.');
-            })
-            .catch((err) => {
-                showErrorMessage(err.message);
+        .then(res => {
+            fs.writeFileSync(bibPath, res, {
+                "encoding": "utf-8"
             });
-    } catch (err) {
+            showStatusMessage('Export Successfully.');
+        })
+        .catch((err) => {
+            showErrorMessage(err.message);
+        });
+    }catch(err){
         showErrorMessage(err.message);
     }
 }
