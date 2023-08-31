@@ -35,5 +35,7 @@ if(cursorLoation >= startIndex && cursorLoation <= endIndex){
 }
 ```
 
+参考：<https://github.com/bnavetta/vscode-zotero-latex/blob/master/src/open-zotero.ts>
+
 
 
