@@ -90,7 +90,7 @@
             "type": "string",
             "default": "bibtex",
             "scope": "window",
-            "description": "Default bib file name"
+            "description": "LaTeX bibliography style, bibtex or biblatex"
           }
         }
       }
