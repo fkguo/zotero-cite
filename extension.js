@@ -27,6 +27,9 @@ function bibliograpyStyle() {
     return vscode.workspace.getConfiguration('zotero-cite').get('bibliograpyStyle', 'http://www.zotero.org/styles/apa');
 }
 
+function latexBibStyle() {
+    return vscode.workspace.getConfiguration('zotero-cite').get('latexBibStyle');
+}
 
 function defaultBibName(){
     if (latastBibName == '') {
@@ -408,7 +411,7 @@ async function getBibliography(keys) {
         "jsonrpc": "2.0",
         "method": "item.export",
         "params": [
-            keys, "biblatex"
+            keys, latexBibStyle()
         ]
     });
 
@@ -431,7 +434,7 @@ async function getBibliography(keys) {
                 throw new Error(err['message']);
             }
 
-            return data['result'][2];
+            return data['result'];
         });
 }
 
