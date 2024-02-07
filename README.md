@@ -44,6 +44,11 @@ If you want to update the footnotes while inserting the citation during the writ
 ![VSCODE插入超链接引用.gif](https://s2.loli.net/2022/05/04/eMSAvoIQC9gViTG.gif)
 
 
+# 插件配置项
+- zotero-cite.defaultBibName：导出引用文件的默认路径。默认值为`ref.bib`。
+- zotero-cite.latexBibStyle：导出的LaTeX引用格式，应为`bibtex`或`biblatex`。默认值为`bibtex`。
+
+
 # 修改历史
 
 - 2021-11-01：创建了zotero-export插件并增加了文件名输入的功能。增加when支持，只允许在markdown或者latex环境下激发命令。
