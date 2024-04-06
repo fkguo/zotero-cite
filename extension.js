@@ -186,7 +186,8 @@ async function pickCiteKeys() {
             url: cayw,
             params: {
                 "format": "pandoc",
-                "brackets": "1"
+                "brackets": "1",
+                "minimize": true
             }
         })
         .then(res => {
