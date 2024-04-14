@@ -49,11 +49,11 @@ function getDocumentCiteKeys() {
     var p;
 
     if (editor.document.languageId == 'markdown') {
-        p = /\[([@^][\w\d]+(;| ){0,2})+\]/g;
+        p = /\[([@^][\w-:\d]+(;| ){0,2})+\]/g;
     }
 
     if (editor.document.languageId == 'latex'){
-        p = /cite(\[[^\]]*\])?\{([\w\d]+(,| ){0,2})+\}/g;
+        p = /cite(\[[^\]]*\])?\{([\w-:\d]+(,| ){0,2})+\}/g;
     }
 
     if (p != null) {
@@ -186,12 +186,13 @@ async function pickCiteKeys() {
             url: cayw,
             params: {
                 "format": "pandoc",
-                "brackets": "1"
+                "brackets": "1",
+                "minimize": true
             }
         })
         .then(res => {
             // const pattern = /\[@([^\]]+)\]/g;
-            const pattern = /@([\w\d]+)/g;
+            const pattern = /@([\w-:\d]+)/g;
             while ((m = pattern.exec(res.data)) != null) {
                 citeKeys.push(m[1])
             }
@@ -441,7 +442,7 @@ async function getBibliography(keys) {
 
 /**
  * 输入一段正则表达式以及文字，导出匹配的列表
- * 匹配引用键的正则：var p = /\[([@^][\w\d]+(; )?)+\]/g;
+ * 匹配引用键的正则：var p = /\[([@^][\w-:\d]+(; )?)+\]/g;
  * @param {pattern} pattern 正则表达式
  * @param {string} text 需要解析的文字
  * @returns 匹配的列表
@@ -486,11 +487,11 @@ function getKeyEnvOffset() {
     var cursorLocation = editor.document.offsetAt(editor.selection.active);
 
     if (editor.document.languageId == 'markdown') {
-        p = /\[([@^][\w\d]+(;| ){0,2})+\]/g;
+        p = /\[([@^][\w-:\d]+(;| ){0,2})+\]/g;
     }
 
     if (editor.document.languageId == 'latex') {
-        p = /cite\{([\w\d]+(,| ){0,2})+\}/g;
+        p = /cite\{([\w-:\d]+(,| ){0,2})+\}/g;
     }
 
     if (p == null) {
