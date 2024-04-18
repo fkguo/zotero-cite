@@ -107,18 +107,18 @@ async function exportBibLatex() {
         }
 
         getBibliography(uniqueKeys)
-        .then(res => {
-            fs.writeFileSync(bibPath, res, {
-                "encoding": "utf-8"
+            .then(res => {
+                fs.writeFileSync(bibPath, res, {
+                    "encoding": "utf-8"
+                });
+                showStatusMessage('Export Successfully.');
+
+                // 如果用户重新输入了bib文件名，那么就更新保持最后修改的名称
+                latastBibName = bibName;
+            })
+            .catch((err) => {
+                showErrorMessage(err.message);
             });
-            showStatusMessage('Export Successfully.');
-            
-            // 如果用户重新输入了bib文件名，那么就更新保持最后修改的名称
-            latastBibName = bibName;
-        })
-        .catch((err) => {
-            showErrorMessage(err.message);
-        });
     }catch(err){
         showErrorMessage(err.message);
     }
@@ -182,14 +182,14 @@ async function pickCiteKeys() {
     // }
 
     await axios({
-            method: 'get',
-            url: cayw,
-            params: {
-                "format": "pandoc",
-                "brackets": "1",
-                "minimize": true
-            }
-        })
+        method: 'get',
+        url: cayw,
+        params: {
+            "format": "pandoc",
+            "brackets": "1",
+            "minimize": true
+        }
+    })
         .then(res => {
             // const pattern = /\[@([^\]]+)\]/g;
             const pattern = /@([\w-:\d]+)/g;
@@ -257,13 +257,13 @@ function insertMarkdownBibliography(citeKey) {
     });
 
     axios({
-            method: 'post',
-            url: json_rpc,
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            data: pyload
-        })
+        method: 'post',
+        url: json_rpc,
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        data: pyload
+    })
         .then(res => {
             const data = res.data;
 
@@ -389,9 +389,9 @@ async function citeBibliography() {
             .then(res => {
                 fs.writeFileSync(
                     bibPath, res, {
-                        flag: 'a',
-                        encoding: 'utf8'
-                    });
+                    flag: 'a',
+                    encoding: 'utf8'
+                });
             })
             .catch(err => {
                 showErrorMessage(err.message);
@@ -401,18 +401,96 @@ async function citeBibliography() {
     }
 }
 
+/**
+ * 获取用户在 Zotero 中拥有的组（group，也称为libraries）
+ * @returns {{}} 返回一个对象，key为组名，value为组的id
+ */
+async function getGroups() {
+    let pyload = JSON.stringify({
+        "jsonrpc": "2.0",
+        "method": "user.groups"
+    });
+
+    return axios({
+        method: 'post',
+        url: json_rpc,
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        data: pyload
+    })
+        .then((res) => {
+            let data = res.data;
+
+            if ('error' in data) {
+                let err = data['error'];
+                throw new Error(err['message']);
+            }
+
+            // convert [{"id":1,"name":"My Library"},{"id":2,"name":"ncist-zyl"}] to {"My Library":1, "ncist-zyl":2}
+            let groups = {};
+            for (const ikey in data['result']) {
+                let item = data['result'][ikey];
+                groups[item['name']] = item['id'];
+            }
+
+            return groups;
+        });
+}
 
 /**
- * 根据key列表获取bibliography列表
- * @param {string} keys key列表
+ * 根据 key 获取 item 所在组的名称
+ * @param {string} key item的key
+ * @returns {string}
+ */
+async function getItemGroupName(key) {
+    let pyload = JSON.stringify({
+        "jsonrpc": "2.0",
+        "method": "item.search",
+        "params": [key]
+    });
+
+    console.log(pyload);
+
+    return axios({
+        method: 'post',
+        url: json_rpc,
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        data: pyload
+    })
+        .then((res) => {
+            let data = res.data;
+
+            if ('error' in data) {
+                let err = data['error'];
+                throw new Error(err['message']);
+            }
+
+            for (const ikey in data['result']) {
+                let item = data['result'][ikey]
+                if (item['citation-key'] === key) {
+                    return item['library'];
+                }
+            }
+
+            throw new Error(`'${key}' is not found.`);
+        });
+}
+
+/**
+ * 根据key列表和组ID获取bibliography列表
+ * @param {string[]} keys key列表
+ * @param {string} groupId 组id
  * @returns string
  */
-async function getBibliography(keys) {
+async function getBibliographyInGroup(keys, groupId) {
     let pyload = JSON.stringify({
         "jsonrpc": "2.0",
         "method": "item.export",
         "params": [
-            keys, latexBibStyle()
+            keys, latexBibStyle(), groupId
         ]
     });
 
@@ -420,13 +498,13 @@ async function getBibliography(keys) {
 
     // requests bibliography
     return axios({
-            method: 'post',
-            url: json_rpc,
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            data: pyload
-        })
+        method: 'post',
+        url: json_rpc,
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        data: pyload
+    })
         .then((res) => {
             let data = res.data;
 
@@ -437,6 +515,65 @@ async function getBibliography(keys) {
 
             return data['result'];
         });
+}
+
+/**
+ * 根据key列表获取bibliography列表
+ * @param {string[]} keys 
+ * @returns string
+ */
+async function getBibliography(keys) {
+    // 由于Better BibTeX for Zotero item.export调用一次只能获取一个组的bibliography，所以需要分组获取
+    var groups = await getGroups();
+    // 如果只有一个组，直接获取
+    if (Object.keys(groups).length === 1){
+        return getBibliographyInGroup(keys, Object.values(groups)[0]);
+    }
+
+    // 如果有多个组，需要根据key获取item所在组的名称，然后分组获取
+    return vscode.window.withProgress({
+        location: vscode.ProgressLocation.Notification,
+        title: "正在导出bibliography...",
+        cancellable: true
+    }, async (progress, token) => {
+        let totalProgress = Object.keys(groups).length + keys.length;
+        // 初始化进度
+        progress.report({ increment: 0 });
+
+        var groupItems = {};
+
+        for (const key in keys) {
+            if (token.isCancellationRequested) {
+                throw new Error('Cancelled');
+            }
+            const itemKey = keys[key];
+            progress.report({ increment: 0, message: `正在获取 ${itemKey} 的组信息...`});
+            const groupName = await getItemGroupName(itemKey);
+
+            if (groupName in groupItems) {
+                groupItems[groupName].push(itemKey);
+            } else {
+                groupItems[groupName] = [itemKey];
+            }
+
+            progress.report({ increment: 100 / totalProgress});
+        }
+
+        var bibs = [];
+        for (const groupName in groupItems) {
+            if (token.isCancellationRequested) {
+                throw new Error('Cancelled');
+            }
+            const groupId = groups[groupName];
+            progress.report({ increment: 0, message: `正在获取组 '${groupName}' 的bibliography...`});
+            const bib = await getBibliographyInGroup(groupItems[groupName], groupId);
+            bibs.push(bib);
+            progress.report({ increment: 100 / totalProgress});
+        }
+        
+        return bibs.join('\n\n');
+    })
+
 }
 
 
@@ -623,7 +760,7 @@ function activate(context) {
 }
 
 // this method is called when your extension is deactivated
-function deactivate() {}
+function deactivate() { }
 
 module.exports = {
     activate,
