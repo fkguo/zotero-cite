@@ -392,7 +392,7 @@ async function citeBibliography() {
         getBibliography(uniqueKeys)
             .then(res => {
                 fs.writeFileSync(
-                    bibPath, res, {
+                    bibPath, '\n' + res, {
                     flag: 'a',
                     encoding: 'utf8'
                 });
