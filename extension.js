@@ -108,7 +108,7 @@ async function exportBibLatex() {
 
         getBibliography(uniqueKeys)
             .then(res => {
-                fs.writeFileSync(bibPath, res, {
+                fs.writeFileSync(bibPath, res + '\n', {
                     "encoding": "utf-8"
                 });
                 showStatusMessage('Export Successfully.');
@@ -392,7 +392,7 @@ async function citeBibliography() {
         getBibliography(uniqueKeys)
             .then(res => {
                 fs.writeFileSync(
-                    bibPath, '\n' + res, {
+                    bibPath, res + '\n', {
                     flag: 'a',
                     encoding: 'utf8'
                 });
