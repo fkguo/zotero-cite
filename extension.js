@@ -117,6 +117,10 @@ async function exportBibLatex() {
                 latastBibName = bibName;
             })
             .catch((err) => {
+                if (err instanceof vscode.CancellationError){
+                    showStatusMessage('Bibliography 导出已取消');
+                    return;
+                }
                 showErrorMessage(err.message);
             });
     }catch(err){
@@ -394,6 +398,10 @@ async function citeBibliography() {
                 });
             })
             .catch(err => {
+                if (err instanceof vscode.CancellationError) {
+                    showStatusMessage('Bibliography 导出已取消');
+                    return;
+                }
                 showErrorMessage(err.message);
             })
     } catch (err) {
@@ -544,7 +552,7 @@ async function getBibliography(keys) {
 
         for (const key in keys) {
             if (token.isCancellationRequested) {
-                throw new Error('Cancelled');
+                throw new vscode.CancellationError();
             }
             const itemKey = keys[key];
             progress.report({ increment: 0, message: `正在获取 ${itemKey} 的组信息...`});
@@ -562,7 +570,7 @@ async function getBibliography(keys) {
         var bibs = [];
         for (const groupName in groupItems) {
             if (token.isCancellationRequested) {
-                throw new Error('Cancelled');
+                throw new vscode.CancellationError();
             }
             const groupId = groups[groupName];
             progress.report({ increment: 0, message: `正在获取组 '${groupName}' 的bibliography...`});
