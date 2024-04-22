@@ -58,6 +58,8 @@
 - 2022-02-07：优化pandoc以及latex文件的插入引用函数，消耗资源更少。
 - 2022-05-04：添加了markdown环境下，超链接的引用功能。
 - 2024-04-07：由于<https://gitee.com/MichiyamaKaren>用户的贡献，插件支持最新的`Better BibTex for Zotero`插件。
+- 2024-04-22: 由于<https://gitee.com/fkguo>用户的贡献，插件的`citekey`支持"-"和":"等特殊符号。
+- 2024-04-22: 由于<https://gitee.com/awwaawwa>用户的贡献，插件的支持多个分组。
 
 ## 教学视频
 
