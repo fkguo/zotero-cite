@@ -10,6 +10,7 @@ const json_rpc = 'http://localhost:23119/better-bibtex/json-rpc';
 const cayw = 'http://localhost:23119/better-bibtex/cayw';
 
 let latastBibName = '';
+const outputChannel = vscode.window.createOutputChannel('Zotero Cite');
 
 function showStatusMessage(message){
     vscode.window.setStatusBarMessage(message, 1500);
@@ -53,7 +54,7 @@ function getDocumentCiteKeys() {
     }
 
     if (editor.document.languageId == 'latex'){
-        p = /cite(\[[^\]]*\])?\{([\w-:\d]+(,| ){0,2})+\}/g;
+        p = /cite[tp]?(\[[^\]]*\])?\{([\w-:\d]+(,| ){0,2})+\}/g;
     }
 
     if (p != null) {
@@ -550,23 +551,31 @@ async function getBibliography(keys) {
 
         var groupItems = {};
 
+        var allErrors = [];
+
         for (const key in keys) {
             if (token.isCancellationRequested) {
                 throw new vscode.CancellationError();
             }
             const itemKey = keys[key];
             progress.report({ increment: 0, message: `正在获取 ${itemKey} 的组信息...`});
-            const groupName = await getItemGroupName(itemKey);
+            try {
+                const groupName = await getItemGroupName(itemKey);
 
-            if (groupName in groupItems) {
-                groupItems[groupName].push(itemKey);
-            } else {
-                groupItems[groupName] = [itemKey];
+                if (groupName in groupItems) {
+                    groupItems[groupName].push(itemKey);
+                } else {
+                    groupItems[groupName] = [itemKey];
+                }
+            } catch (err) {
+                outputChannel.appendLine(err.message);
+                if (err?.message && !err?.message?.includes('is not found')) {
+                    allErrors.push(err.message);
+                }
             }
 
             progress.report({ increment: 100 / totalProgress});
         }
-
         var bibs = [];
         for (const groupName in groupItems) {
             if (token.isCancellationRequested) {
@@ -577,6 +586,11 @@ async function getBibliography(keys) {
             const bib = await getBibliographyInGroup(groupItems[groupName], groupId);
             bibs.push(bib);
             progress.report({ increment: 100 / totalProgress});
+        }
+        if (allErrors.length > 0) {
+            vscode.window.showInformationMessage('Bibliography 导出成功，但是有一些错误，请查看输出面板');
+        } else {
+            showStatusMessage('Bibliography 导出成功');
         }
         
         return bibs.join('\n\n');
@@ -609,7 +623,7 @@ function getCiteKeyList(keyMatchList) {
     var citeKeyList = [];
     keyMatchList.forEach((v, i) => {
         // 处理latex的情况
-        var a = v[0].replace(/^cite/, '');
+        var a = v[0].replace(/^cite[tp]?/, '');
         var p = /(\w|\d)+/g;
         var keyMatches = getMatchList(p, a);
         keyMatches.forEach((vi, ii) => {
@@ -636,7 +650,7 @@ function getKeyEnvOffset() {
     }
 
     if (editor.document.languageId == 'latex') {
-        p = /cite\{([\w-:\d]+(,| ){0,2})+\}/g;
+        p = /cite[tp]?\{([\w-:\d]+(,| ){0,2})+\}/g;
     }
 
     if (p == null) {
