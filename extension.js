@@ -369,13 +369,13 @@ async function citeBibliography() {
     // 替换bibName中的${fileBasename}为当前文件的文件名
     bibName_replaced = bibName_replaced.replace("${fileBasename}", path.basename(currentlyOpenTabfilePath));
     // 替换bibName中的${fileBasenameNoExtension}为当前文件的文件名，不带后缀
-    bibName_replaced = bibName_replaced.replace("${fileBasenameNoExtension}", path.basename(currentlyOpenTabfilePath, ".tex"));
+    bibName_replaced = bibName_replaced.replace("${fileBasenameNoExtension}", path.basename(currentlyOpenTabfilePath, ".bib"));
     // 替换bibName中的${fileDirname}为当前文件的目录名
     bibName_replaced = bibName_replaced.replace("${fileDirname}", path.dirname(currentlyOpenTabfilePath));
     // 替换bibName中的${fileExtname}为当前文件的后缀名
     bibName_replaced = bibName_replaced.replace("${fileExtname}", path.extname(currentlyOpenTabfilePath));
     // 替换bibName中的${fileBasenameNoExtension}为当前文件的文件名，不带后缀
-    bibName_replaced = bibName_replaced.replace("${fileBasenameNoExtension}", path.basename(currentlyOpenTabfilePath, ".tex"));
+    bibName_replaced = bibName_replaced.replace("${fileBasenameNoExtension}", path.basename(currentlyOpenTabfilePath, ".bib"));
 
     let bibPath = bibName_replaced;
     if(path.isAbsolute(bibName_replaced)) {
