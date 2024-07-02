@@ -363,9 +363,26 @@ async function citeBibliography() {
       throw new Error("bibName is invalid or its length is less than 5.");
     }
 
-    // Create bib Path
-    var parentDir = path.dirname(currentlyOpenTabfilePath);
-    var bibPath = path.join(parentDir, bibName);
+    let bibName_replaced = bibName;
+    // 替换bibName中的${workspaceFolder}为工作目录的路径
+    bibName_replaced = bibName_replaced.replace("${workspaceFolder}", vscode.workspace.rootPath);
+    // 替换bibName中的${fileBasename}为当前文件的文件名
+    bibName_replaced = bibName_replaced.replace("${fileBasename}", path.basename(currentlyOpenTabfilePath));
+    // 替换bibName中的${fileBasenameNoExtension}为当前文件的文件名，不带后缀
+    bibName_replaced = bibName_replaced.replace("${fileBasenameNoExtension}", path.basename(currentlyOpenTabfilePath, ".tex"));
+    // 替换bibName中的${fileDirname}为当前文件的目录名
+    bibName_replaced = bibName_replaced.replace("${fileDirname}", path.dirname(currentlyOpenTabfilePath));
+    // 替换bibName中的${fileExtname}为当前文件的后缀名
+    bibName_replaced = bibName_replaced.replace("${fileExtname}", path.extname(currentlyOpenTabfilePath));
+    // 替换bibName中的${fileBasenameNoExtension}为当前文件的文件名，不带后缀
+    bibName_replaced = bibName_replaced.replace("${fileBasenameNoExtension}", path.basename(currentlyOpenTabfilePath, ".tex"));
+
+    let bibPath = bibName_replaced;
+    if(path.isAbsolute(bibName_replaced)) {
+      // bibPath = bibName_replaced;
+    } else {      
+      bibPath = path.join(path.dirname(currentlyOpenTabfilePath), bibName_replaced);
+    }
 
     // get selected keys
     var citeKeys = await pickCiteKeys();
