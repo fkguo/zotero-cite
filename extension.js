@@ -43,6 +43,10 @@ function defaultBibName() {
   return latastBibName;
 }
 
+function minimizeZotero() {
+  return vscode.workspace.getConfiguration("zotero-cite").get("minimizeZotero");
+}
+
 /**
  * 获取文档中引用的键列表
  */
@@ -187,7 +191,8 @@ async function pickCiteKeys() {
     params: {
       format: "pandoc",
       brackets: "1",
-      minimize: true,
+      // minimize: true,
+      minimize: minimizeZotero()
     },
   })
     .then((res) => {
