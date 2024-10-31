@@ -62,5 +62,5 @@
 
 ## 教学视频
 
-链接：https://pan.baidu.com/s/1Z6i6lFzoJAAJIg7o7pylQQ 
-提取码：5jbw 
+链接: https://pan.baidu.com/s/10FE43K7ZR4LhHv19_5qrnw?pwd=bjf6 提取码: bjf6 复制这段内容后打开百度网盘手机App，操作更方便哦 
+--来自百度网盘超级会员v9的分享
