@@ -1,119 +1,138 @@
 {
-  "name": "zotero-cite",
-  "publisher": "XING",
-  "displayName": "Zotero Cite",
-  "repository": {
-    "url": "https://gitee.com/rusterx/zotero-cite"
-  },
-  "description": "Cite and manage bibliography from zotero via json rpc",
-  "version": "0.8.5",
-  "engines": {
-    "vscode": "^1.61.0"
-  },
-  "icon": "images/zotero.png",
-  "categories": [
-    "Other"
-  ],
-  "activationEvents": [
-    "onCommand:zotero-cite.exportBibLatex",
-    "onCommand:zotero-cite.addCitation",
-    "onCommand:zotero-cite.citeBibliography",
-    "onCommand:zotero-cite.citeMarkdownBibliography",
-    "onCommand:zotero-cite.addHyperLinkCitation"
-  ],
-  "main": "./extension.js",
-  "contributes": {
-    "commands": [
-      {
-        "command": "zotero-cite.exportBibLatex",
-        "title": "Zotero Cite: Export BibLatex"
-      },
-      {
-        "command": "zotero-cite.addCitation",
-        "title": "Zotero Cite: Add Citation for Pandoc/Latex"
-      },
-      {
-        "command": "zotero-cite.citeBibliography",
-        "title": "Zotero Cite: Cite and Create Bibliography for Pandoc/LaTeX "
-      },
-      {
-        "command": "zotero-cite.citeMarkdownBibliography",
-        "title": "Zotero Cite: Cite and Create Bibliography for Markdown"
-      },
-      {
-        "command": "zotero-cite.addHyperLinkCitation",
-        "title": "Zotero Cite: Cite Hyperlink"
-      }
-    ],
-    "menus": {
-      "commandPalette": [
-        {
-          "command": "zotero-cite.exportBibLatex",
-          "when": "editorLangId == 'latex' || editorLangId == 'markdown'"
-        },
-        {
-          "command": "zotero-cite.addCitation",
-          "when": "editorLangId == 'latex' || editorLangId == 'markdown'"
-        },
-        {
-          "command": "zotero-cite.citeBibliography",
-          "when": "editorLangId == 'latex' || editorLangId == 'markdown'"
-        },
-        {
-          "command": "zotero-cite.citeMarkdownBibliography",
-          "when": "editorLangId == 'latex' || editorLangId == 'markdown'"
-        },
-        {
-          "command": "zotero-cite.addHyperLinkCitation",
-          "when": "editorLangId == 'markdown'"
-        }
-      ]
-    },
-    "configuration": [
-      {
-        "type": "object",
-        "title": "Zotero Cite",
-        "properties": {
-          "zotero-cite.bibliograpyStyle": {
-            "type": "string",
-            "default": "http://www.zotero.org/styles/apa",
-            "description": "URL of bibliography style, see: https://www.zotero.org/styles",
-            "scope": "window"
-          },
-          "zotero-cite.defaultBibName": {
-            "type": "string",
-            "default": "ref.bib",
-            "scope": "window",
-            "description": "Default bib file name"
-          },
-          "zotero-cite.latexBibStyle": {
-            "type": "string",
-            "default": "bibtex",
-            "scope": "window",
-            "description": "LaTeX bibliography style, bibtex or biblatex"
-          }
-        }
-      }
-    ]
-  },
-  "scripts": {
-    "lint": "eslint .",
-    "pretest": "npm run lint",
-    "test": "node ./test/runTest.js"
-  },
-  "devDependencies": {
-    "@types/vscode": "^1.61.0",
-    "@types/glob": "^7.1.4",
-    "@types/mocha": "^9.0.0",
-    "@types/node": "14.x",
-    "eslint": "^7.32.0",
-    "glob": "^7.1.7",
-    "mocha": "^9.1.1",
-    "typescript": "^4.4.3",
-    "@vscode/test-electron": "^1.6.2"
-  },
-  "dependencies": {
-    "@orcid/bibtex-parse-js": "0.0.25",
-    "axios": "^0.24.0"
-  }
+	"name": "zotero-cite",
+	"publisher": "XING",
+	"displayName": "Zotero Cite",
+	"repository": {
+		"url": "https://gitee.com/rusterx/zotero-cite"
+	},
+	"description": "Cite and manage bibliography from zotero via json rpc",
+	"version": "0.8.7",
+	"engines": {
+		"vscode": "^1.61.0"
+	},
+	"icon": "images/zotero.png",
+	"categories": [
+		"Other"
+	],
+	"activationEvents": [
+		"onCommand:zotero-cite.exportBibLatex",
+		"onCommand:zotero-cite.addCitation",
+		"onCommand:zotero-cite.citeBibliography",
+		"onCommand:zotero-cite.citeMarkdownBibliography",
+		"onCommand:zotero-cite.addHyperLinkCitation"
+	],
+	"main": "./extension.js",
+	"contributes": {
+		"commands": [
+			{
+				"command": "zotero-cite.exportBibLatex",
+				"title": "Zotero Cite: Export BibLatex"
+			},
+			{
+				"command": "zotero-cite.addCitation",
+				"title": "Zotero Cite: Add Citation for Pandoc/Latex"
+			},
+			{
+				"command": "zotero-cite.citeBibliography",
+				"title": "Zotero Cite: Cite and Create Bibliography for Pandoc/LaTeX "
+			},
+			{
+				"command": "zotero-cite.citeMarkdownBibliography",
+				"title": "Zotero Cite: Cite and Create Bibliography for Markdown"
+			},
+			{
+				"command": "zotero-cite.addHyperLinkCitation",
+				"title": "Zotero Cite: Cite Hyperlink"
+			}
+		],
+		"menus": {
+			"commandPalette": [
+				{
+					"command": "zotero-cite.exportBibLatex",
+					"when": "editorLangId == 'latex' || editorLangId == 'markdown'"
+				},
+				{
+					"command": "zotero-cite.addCitation",
+					"when": "editorLangId == 'latex' || editorLangId == 'markdown'"
+				},
+				{
+					"command": "zotero-cite.citeBibliography",
+					"when": "editorLangId == 'latex' || editorLangId == 'markdown'"
+				},
+				{
+					"command": "zotero-cite.citeMarkdownBibliography",
+					"when": "editorLangId == 'latex' || editorLangId == 'markdown'"
+				},
+				{
+					"command": "zotero-cite.addHyperLinkCitation",
+					"when": "editorLangId == 'markdown'"
+				}
+			]
+		},
+		"configuration": [
+			{
+				"type": "object",
+				"title": "Zotero Cite",
+				"properties": {
+					"zotero-cite.bibliograpyStyle": {
+						"type": "string",
+						"default": "http://www.zotero.org/styles/apa",
+						"description": "URL of bibliography style, see: https://www.zotero.org/styles",
+						"scope": "window"
+					},
+					"zotero-cite.defaultBibName": {
+						"type": "string",
+						"default": "ref.bib",
+						"scope": "window",
+						"description": "Default bib file name"
+					},
+					"zotero-cite.latexBibStyle": {
+						"type": "string",
+						"default": "bibtex",
+						"scope": "window",
+						"description": "LaTeX bibliography style, bibtex or biblatex"
+					},
+					"zotero-cite.minimizeZotero": {
+						"type": "string",
+						"default": "",
+						"scope": "window",
+						"description": "Any non-empty value will minimize the Zotero window after citation"
+					}
+				}
+			}
+		]
+	},
+	"scripts": {
+		"lint": "eslint .",
+		"pretest": "npm run lint",
+		"test": "node ./test/runTest.js"
+	},
+	"devDependencies": {
+		"@types/vscode": "^1.61.0",
+		"@types/glob": "^7.1.4",
+		"@types/mocha": "^9.0.0",
+		"@types/node": "14.x",
+		"eslint": "^7.32.0",
+		"glob": "^7.1.7",
+		"mocha": "^9.1.1",
+		"typescript": "^4.4.3",
+		"@vscode/test-electron": "^1.6.2"
+	},
+	"dependencies": {
+		"@orcid/bibtex-parse-js": "0.0.25",
+		"axios": "^0.24.0"
+	},
+	"__metadata": {
+		"id": "92d25ab9-444d-4394-a0ef-4cfa5f705b73",
+		"publisherId": "4510c0ac-2bcc-4bca-a8f9-d61e73c8def8",
+		"publisherDisplayName": "XING",
+		"targetPlatform": "undefined",
+		"isApplicationScoped": false,
+		"isPreReleaseVersion": false,
+		"hasPreReleaseVersion": false,
+		"installedTimestamp": 1728478986021,
+		"pinned": false,
+		"preRelease": false,
+		"source": "gallery"
+	}
 }
