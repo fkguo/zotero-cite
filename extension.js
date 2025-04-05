@@ -192,7 +192,7 @@ async function pickCiteKeys() {
       format: "pandoc",
       brackets: "1",
       // minimize: true,
-      minimize: minimizeZotero()
+      minimize: minimizeZotero(),
     },
   })
     .then((res) => {
@@ -385,7 +385,7 @@ async function citeBibliography() {
     let bibPath = bibName_replaced;
     if(path.isAbsolute(bibName_replaced)) {
       // bibPath = bibName_replaced;
-    } else {      
+    } else {
       bibPath = path.join(path.dirname(currentlyOpenTabfilePath), bibName_replaced);
     }
 
@@ -755,6 +755,138 @@ async function addHyperLinkCitation() {
   }
 }
 
+async function getBibtexFromZotero(citekey) {
+  try {
+    const response = await axios.post(json_rpc, {
+      jsonrpc: "2.0",
+      method: "item.export",
+      params: [[citekey], "bibtex"],
+    });
+
+    if (response.data && response.data.result) {
+      return response.data.result;
+    } else {
+      vscode.window.showErrorMessage("No result returned from Zotero.");
+    }
+  } catch (error) {
+    vscode.window.showErrorMessage(
+      "Failed to fetch from Zotero: " + error.message
+    );
+  }
+  return null;
+}
+
+function getBibPath() {
+  const bibName = defaultBibName();
+  const editor = vscode.window.activeTextEditor;
+  var currentlyOpenTabfilePath = editor.document.uri.fsPath;
+  if (bibName.length < 5 || path.extname(bibName) != ".bib") {
+    throw new Error("bibName is invalid or its length is less than 5.");
+  }
+
+  let bibName_replaced = bibName;
+  // 替换bibName中的${workspaceFolder}为工作目录的路径
+  bibName_replaced = bibName_replaced.replace(
+    "${workspaceFolder}",
+    vscode.workspace.rootPath
+  );
+  // 替换bibName中的${fileBasename}为当前文件的文件名
+  bibName_replaced = bibName_replaced.replace(
+    "${fileBasename}",
+    path.basename(currentlyOpenTabfilePath)
+  );
+  // 替换bibName中的${fileBasenameNoExtension}为当前文件的文件名，不带后缀
+  bibName_replaced = bibName_replaced.replace(
+    "${fileBasenameNoExtension}",
+    path.basename(currentlyOpenTabfilePath, ".bib")
+  );
+  // 替换bibName中的${fileDirname}为当前文件的目录名
+  bibName_replaced = bibName_replaced.replace(
+    "${fileDirname}",
+    path.dirname(currentlyOpenTabfilePath)
+  );
+  // 替换bibName中的${fileExtname}为当前文件的后缀名
+  bibName_replaced = bibName_replaced.replace(
+    "${fileExtname}",
+    path.extname(currentlyOpenTabfilePath)
+  );
+  // 替换bibName中的${fileBasenameNoExtension}为当前文件的文件名，不带后缀
+  bibName_replaced = bibName_replaced.replace(
+    "${fileBasenameNoExtension}",
+    path.basename(currentlyOpenTabfilePath, ".bib")
+  );
+
+  let bibPath = bibName_replaced;
+  if (path.isAbsolute(bibName_replaced)) {
+    // bibPath = bibName_replaced;
+  } else {
+    bibPath = path.join(
+      path.dirname(currentlyOpenTabfilePath),
+      bibName_replaced
+    );
+  }
+  return bibPath;
+}
+
+async function updateBibEntries() {
+  // 得到bib文件的默认文件名
+  const bibPath = getBibPath();
+  try {
+    const data = fs.readFileSync(bibPath, "utf8");
+    // 使用 bibtex-parse-js 解析现有的 bibtex 数据
+    const parsedData = bibtexParse.toJSON(data);
+    const length = parsedData.length;
+    var processedCount = 0;
+    console.log("Parsed %d Bib entries.", parsedData.length);
+    // 查找并替换相应的 citekey 条目
+    let updated = false;
+    for (const [index, entry] of parsedData.entries()) {
+      var result = await getBibtexFromZotero(entry.citationKey);
+      if (result === null) {
+        console.log("Not found entry %s", index, entry.citationKey);
+        parsedData[index] = bibtexParse.toBibtex([entry], false);
+        vscode.window
+          .showInformationMessage(
+            "Not found bib entry " +
+              entry.citationKey +
+              " in Zotero, please check the spell.",
+            "复制 citation key",
+            "关闭"
+          )
+          .then((selection) => {
+            if (selection == "复制") {
+              vscode.env.clipboard.writeText(entry.citationKey);
+              vscode.window.showInformationMessage(
+                "Citation Key: " + entry.citationKey + " 已复制到剪贴板!"
+              );
+            }
+          });
+        continue;
+      }
+      processedCount += 1;
+      parsedData[index] = result;
+      updated = true;
+      console.log("no.%d bib entry updated %s", index, entry.citationKey);
+    }
+
+    if (updated) {
+      // 将更新后的条目重新写回文件
+      let updatedBibtexData = "";
+      parsedData.forEach((entry) => {
+        updatedBibtexData += entry + "\n";
+      });
+      fs.writeFileSync(bibPath, updatedBibtexData, "utf8");
+    }
+    vscode.window.showInformationMessage(
+      processedCount + " of " + length + " bib entries successfully updated."
+    );
+  } catch (err) {
+    vscode.window.showErrorMessage(
+      "Error updating BibTeX file: " + err.message
+    );
+  }
+}
+
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 
@@ -789,6 +921,10 @@ function activate(context) {
     {
       id: "zotero-cite.addHyperLinkCitation",
       command: addHyperLinkCitation,
+    },
+    {
+      id: "zotero-cite.updateBibtexFromZotero",
+      command: updateBibEntries,
     },
   ];
 
