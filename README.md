@@ -42,6 +42,8 @@
 
 ![VSCODE插入超链接引用.gif](https://s2.loli.net/2022/05/04/eMSAvoIQC9gViTG.gif)
 
+- Zotero Cite: Zotero Cite: Update BibTex Entries
+从 Zotero 更新 defaultBibName 路径对应bib文件的所有项，存在未匹配项则不修改原始记录。
 
 ## 插件配置项
 - zotero-cite.defaultBibName：导出引用文件的默认路径。默认值为`ref.bib`。
