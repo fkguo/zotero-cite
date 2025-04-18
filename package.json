@@ -6,7 +6,7 @@
 		"url": "https://gitee.com/rusterx/zotero-cite"
 	},
 	"description": "Cite and manage bibliography from zotero via json rpc",
-	"version": "0.8.10",
+	"version": "0.8.11",
 	"engines": {
 		"vscode": "^1.61.0"
 	},
@@ -14,8 +14,7 @@
 	"categories": [
 		"Other"
 	],
-	"activationEvents": [
-	],
+	"activationEvents": [],
 	"main": "./extension.js",
 	"contributes": {
 		"commands": [
