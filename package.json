@@ -6,7 +6,7 @@
 		"url": "https://gitee.com/rusterx/zotero-cite"
 	},
 	"description": "Cite and manage bibliography from zotero via json rpc",
-	"version": "0.8.9",
+	"version": "0.8.10",
 	"engines": {
 		"vscode": "^1.61.0"
 	},
@@ -15,11 +15,6 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onCommand:zotero-cite.exportBibLatex",
-		"onCommand:zotero-cite.addCitation",
-		"onCommand:zotero-cite.citeBibliography",
-		"onCommand:zotero-cite.citeMarkdownBibliography",
-		"onCommand:zotero-cite.addHyperLinkCitation"
 	],
 	"main": "./extension.js",
 	"contributes": {
@@ -43,6 +38,10 @@
 			{
 				"command": "zotero-cite.addHyperLinkCitation",
 				"title": "Zotero Cite: Cite Hyperlink"
+			},
+			{
+				"command": "zotero-cite.updateBibtexFromZotero",
+				"title": "Zotero Cite: Update BibTex Entries"
 			}
 		],
 		"menus": {
@@ -66,6 +65,10 @@
 				{
 					"command": "zotero-cite.addHyperLinkCitation",
 					"when": "editorLangId == 'markdown'"
+				},
+				{
+					"command": "zotero-cite.updateBibtexFromZotero",
+					"when": "editorLangId == 'bibtex' || editorLangId == 'latex'"
 				}
 			]
 		},
