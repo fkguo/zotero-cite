@@ -15,6 +15,10 @@
 		"Other"
 	],
 	"activationEvents": [],
+	"extensionKind": [
+		"ui",
+		"workspace"
+	],
 	"main": "./extension.js",
 	"contributes": {
 		"commands": [
