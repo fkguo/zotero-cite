@@ -3,7 +3,6 @@
 const vscode = require("vscode");
 const axios = require("axios");
 const path = require("path");
-const fs = require("fs");
 const bibtexParse = require("@orcid/bibtex-parse-js");
 
 const json_rpc = "http://localhost:23119/better-bibtex/json-rpc";
@@ -73,13 +72,23 @@ function getDocumentCiteKeys() {
 async function exportBibLatex() {
   try {
     const editor = vscode.window.activeTextEditor;
-    var currentlyOpenTabfilePath = editor.document.uri.fsPath;
-    var bibName;
-
-    // Current file tab is not saved.
-    if (currentlyOpenTabfilePath.indexOf("Untitled") != -1) {
-      throw new Error("Please SAVE Current Tab.");
+    if (!editor) {
+      showErrorMessage("No active text editor found.");
+      return;
     }
+
+    if (editor.document.isUntitled) {
+      showErrorMessage("Please save the current file before exporting BibTeX.");
+      return;
+    }
+
+    if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
+      showErrorMessage("No workspace folder is open. Cannot save the .bib file to the workspace root.");
+      return;
+    }
+
+    var currentlyOpenTabfileUri = editor.document.uri;
+    var bibName;
 
     // Ask for bib file name
     await vscode.window
@@ -100,8 +109,8 @@ async function exportBibLatex() {
     }
 
     // Create bib Path
-    var parentDir = path.dirname(currentlyOpenTabfilePath);
-    var bibPath = path.join(parentDir, bibName);
+    // var parentDir = vscode.Uri.joinPath(currentlyOpenTabfilePath,"..");
+    var bibPath = vscode.Uri.joinPath(currentlyOpenTabfileUri, "..",bibName);
 
     // 获取键列表
     const keys = getDocumentCiteKeys();
@@ -116,9 +125,7 @@ async function exportBibLatex() {
 
     getBibliography(uniqueKeys)
       .then((res) => {
-        fs.writeFileSync(bibPath, res + "\n", {
-          encoding: "utf-8",
-        });
+        vscode.workspace.fs.writeFile(bibPath, Buffer.from(res + "\n", "utf-8"));
         showStatusMessage("Export Successfully.");
 
         // 如果用户重新输入了bib文件名，那么就更新保持最后修改的名称
@@ -291,19 +298,20 @@ function insertMarkdownBibliography(citeKey) {
  * @returns string[]
  */
 function getBibliographyKeyFromFile(bibPath) {
-  // 代表文件不存在，返回空数组
-  if (!fs.existsSync(bibPath)) {
+  try {
+    // Try to read the file, if it doesn't exist it will throw an error
+    const fileData = vscode.workspace.fs.readFile(bibPath);
+    var content = Buffer.from(fileData).toString('utf8');
+  } catch (error) {
+    // File doesn't exist or cannot be read
     return new Array();
   }
-
-  var content = fs.readFileSync(bibPath, {
-    encoding: "utf8",
-  });
 
   var jsonBibs = bibtexParse.toJSON(content);
 
   return jsonBibs.map((jb) => jb["citationKey"]);
 }
+
 
 /**
  * todo: 给该函数添加智能检测功能
@@ -354,10 +362,11 @@ function insertCiteKeys(keyList) {
 async function citeBibliography() {
   try {
     const editor = vscode.window.activeTextEditor;
-    var currentlyOpenTabfilePath = editor.document.uri.fsPath;
+    var currentlyOpenTabfileUri = editor.document.uri;
+    var currentlyOpenTabfilePath = currentlyOpenTabfileUri.fsPath;
 
     // Current file tab is not saved.
-    if (currentlyOpenTabfilePath.indexOf("Untitled") != -1) {
+    if (editor.document.isUntitled) {
       throw new Error("Please SAVE Current Tab.");
     }
 
@@ -370,7 +379,8 @@ async function citeBibliography() {
 
     let bibName_replaced = bibName;
     // 替换bibName中的${workspaceFolder}为工作目录的路径
-    bibName_replaced = bibName_replaced.replace("${workspaceFolder}", vscode.workspace.rootPath);
+    bibName_replaced = bibName_replaced.replace("${workspaceFolder}", vscode.workspace.workspaceFolders[0].uri.fsPath
+    );
     // 替换bibName中的${fileBasename}为当前文件的文件名
     bibName_replaced = bibName_replaced.replace("${fileBasename}", path.basename(currentlyOpenTabfilePath));
     // 替换bibName中的${fileBasenameNoExtension}为当前文件的文件名，不带后缀
@@ -383,10 +393,17 @@ async function citeBibliography() {
     bibName_replaced = bibName_replaced.replace("${fileBasenameNoExtension}", path.basename(currentlyOpenTabfilePath, ".bib"));
 
     let bibPath = bibName_replaced;
-    if(path.isAbsolute(bibName_replaced)) {
+    if (path.isAbsolute(bibName_replaced)) {
       // bibPath = bibName_replaced;
+      bibPath = vscode.Uri.file(bibName_replaced);
+      bibPath.scheme = currentlyOpenTabfileUri.scheme;
+      bibPath.authority = currentlyOpenTabfileUri.authority;
     } else {
-      bibPath = path.join(path.dirname(currentlyOpenTabfilePath), bibName_replaced);
+      bibPath = vscode.Uri.joinPath(
+        currentlyOpenTabfileUri,
+        "..",
+        bibName_replaced
+      );
     }
 
     // get selected keys
@@ -404,12 +421,29 @@ async function citeBibliography() {
       return;
     }
 
+    // new api not support append mode , manual implement
     getBibliography(uniqueKeys)
-      .then((res) => {
-        fs.writeFileSync(bibPath, res + "\n", {
-          flag: "a",
-          encoding: "utf8",
-        });
+      .then(async (newEntries) => { 
+        let existingContent = "";
+        try {
+          const fileData = await vscode.workspace.fs.readFile(bibPath);
+          existingContent = Buffer.from(fileData).toString('utf-8');
+        } catch (error) {
+          if (error.code !== 'FileNotFound' && error.code !== 'EntryNotFound') {
+            showErrorMessage(`Error reading bibliography file ${bibPath.fsPath}: ${error.message}`);
+          }
+        }
+
+        // Prepare the content to write
+        let contentToWrite;
+        if (existingContent.trim() === "") {
+          contentToWrite = newEntries;
+        } else {
+          contentToWrite = existingContent.trimEnd() + "\n\n" + newEntries.trimStart();
+        }
+
+        await vscode.workspace.fs.writeFile(bibPath, Buffer.from(contentToWrite + "\n", "utf-8"));
+        showStatusMessage(`Bibliography updated: ${uniqueKeys.length} new entries appended to ${path.basename(bibPath.fsPath)}.`);
       })
       .catch((err) => {
         if (err instanceof vscode.CancellationError) {
@@ -819,9 +853,13 @@ function getBibPath() {
   let bibPath = bibName_replaced;
   if (path.isAbsolute(bibName_replaced)) {
     // bibPath = bibName_replaced;
+    bibPath = vscode.Uri.file(bibName_replaced);
+    bibPath.scheme = currentlyOpenTabfileUri.scheme;
+    bibPath.authority = currentlyOpenTabfileUri.authority;
   } else {
-    bibPath = path.join(
-      path.dirname(currentlyOpenTabfilePath),
+    bibPath = vscode.Uri.joinPath(
+      editor.document.uri,
+      "..",
       bibName_replaced
     );
   }
@@ -832,7 +870,7 @@ async function updateBibEntries() {
   // 得到bib文件的默认文件名
   const bibPath = getBibPath();
   try {
-    const data = fs.readFileSync(bibPath, "utf8");
+    const data = vscode.workspace.fs.readFile(bibPath, "utf8");
     // 使用 bibtex-parse-js 解析现有的 bibtex 数据
     const parsedData = bibtexParse.toJSON(data);
     const length = parsedData.length;
@@ -875,7 +913,7 @@ async function updateBibEntries() {
       parsedData.forEach((entry) => {
         updatedBibtexData += entry + "\n";
       });
-      fs.writeFileSync(bibPath, updatedBibtexData, "utf8");
+      vscode.workspace.fs.writeFile(bibPath, Buffer.from(updatedBibtexData, "utf8"));
     }
     vscode.window.showInformationMessage(
       processedCount + " of " + length + " bib entries successfully updated."
