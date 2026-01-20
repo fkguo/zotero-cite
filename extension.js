@@ -51,7 +51,11 @@ function minimizeZotero() {
  */
 function getDocumentCiteKeys() {
   const editor = vscode.window.activeTextEditor;
-  const content = editor.document.getText();
+  let content = editor.document.getText();
+  const cjkRegex = /[\u4e00-\u9fa5]/;
+  if (cjkRegex.test(content)) {
+    content = content.replace(/，/g, ",");
+  }
   var p;
 
   if (editor.document.languageId == "markdown") {
@@ -423,7 +427,7 @@ async function citeBibliography() {
 
     // new api not support append mode , manual implement
     getBibliography(uniqueKeys)
-      .then(async (newEntries) => { 
+      .then(async (newEntries) => {
         let existingContent = "";
         try {
           const fileData = await vscode.workspace.fs.readFile(bibPath);
@@ -703,7 +707,7 @@ function getKeyEnvOffset() {
   }
 
   if (editor.document.languageId == "latex") {
-    p = /cite[tp]?\{([\w-:\d]+(,| ){0,2})+\}/g;
+    p = /cite[tp]?\{([\w-:\d]+(,|，| ){0,2})+\}/g;
   }
 
   if (p == null) {
@@ -886,8 +890,8 @@ async function updateBibEntries() {
         vscode.window
           .showInformationMessage(
             "Not found bib entry " +
-              entry.citationKey +
-              " in Zotero, please check the spell.",
+            entry.citationKey +
+            " in Zotero, please check the spell.",
             "复制 citation key",
             "关闭"
           )
