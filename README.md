@@ -61,6 +61,7 @@
 - 2024-04-22: 由于<https://gitee.com/fkguo>用户的贡献，插件的`citekey`支持"-"和":"等特殊符号。
 - 2024-04-22: 由于<https://gitee.com/awwaawwa>用户的贡献，插件的支持多个分组。
 - 2024-06-13: 由于<https://gitee.com/cesaryuan>用户贡献，在使用`exportBibLatex`的时候，插件支持`\citet`和`\citep`命令。
+- 2026-02-04: 由于<https://gitee.com/aasll>用户贡献，修复了'update biblatex entries'功能，并增强了返回结果的体验。
 
 ## 教学视频
 
