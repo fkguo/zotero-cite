@@ -301,19 +301,17 @@ function insertMarkdownBibliography(citeKey) {
  * @param {string} bibPath bib文件的路径
  * @returns string[]
  */
-function getBibliographyKeyFromFile(bibPath) {
+async function getBibliographyKeyFromFile(bibPath) {
   try {
-    // Try to read the file, if it doesn't exist it will throw an error
-    const fileData = vscode.workspace.fs.readFile(bibPath);
-    var content = Buffer.from(fileData).toString('utf8');
+    // Try to read the file; vscode.workspace.fs.readFile returns a Uint8Array
+    const fileBytes = await vscode.workspace.fs.readFile(bibPath);
+    const content = Buffer.from(fileBytes).toString('utf8');
+    var jsonBibs = bibtexParse.toJSON(content);
+    return jsonBibs.map((jb) => jb["citationKey"]);
   } catch (error) {
     // File doesn't exist or cannot be read
-    return new Array();
+    return [];
   }
-
-  var jsonBibs = bibtexParse.toJSON(content);
-
-  return jsonBibs.map((jb) => jb["citationKey"]);
 }
 
 
@@ -415,7 +413,7 @@ async function citeBibliography() {
     insertCiteKeys(citeKeys);
 
     // 根据bib文件，而不是cite去获取keys。
-    var bibKeys = getBibliographyKeyFromFile(bibPath);
+    var bibKeys = await getBibliographyKeyFromFile(bibPath);
 
     // 过滤已经包含的引用
     var uniqueKeys = citeKeys.filter((v, i) => !bibKeys.includes(v));
@@ -619,9 +617,10 @@ async function getBibliography(keys) {
             groupItems[groupName] = [itemKey];
           }
         } catch (err) {
-          outputChannel.appendLine(err.message);
-          if (err?.message && !err?.message?.includes("is not found")) {
-            allErrors.push(err.message);
+          const msg = err && err.message ? err.message : String(err);
+          outputChannel.appendLine(msg);
+          if (msg && !msg.includes("is not found")) {
+            allErrors.push(msg);
           }
         }
 
