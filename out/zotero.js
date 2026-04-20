@@ -7,6 +7,7 @@ exports.getBibtexFromZotero = exports.getBibliographyInGroup = exports.getItemGr
 const axios_1 = __importDefault(require("axios"));
 const config_1 = require("./config");
 const i18n_1 = require("./i18n");
+const bibtexParse = require("@orcid/bibtex-parse-js");
 class EndpointAccessError extends Error {
 }
 function createEndpointAccessError(endpointName, endpointUrl, settingKey, error) {
@@ -16,6 +17,33 @@ function createEndpointAccessError(endpointName, endpointUrl, settingKey, error)
         settingKey,
         message: (0, i18n_1.errorToMessage)(error),
     }));
+}
+function removeExcludedBibFields(bibText) {
+    if (!bibText.trim()) {
+        return bibText;
+    }
+    const excludedFields = new Set((0, config_1.getExcludedBibFields)());
+    if (excludedFields.size === 0) {
+        return bibText;
+    }
+    try {
+        const entries = bibtexParse.toJSON(bibText);
+        entries.forEach((entry) => {
+            const entryTags = (entry.entryTags || {});
+            Object.keys(entryTags).forEach((tagKey) => {
+                if (excludedFields.has(tagKey.toLowerCase())) {
+                    delete entryTags[tagKey];
+                }
+            });
+            entry.entryTags = entryTags;
+        });
+        const sanitized = bibtexParse.toBibtex(entries, false);
+        return sanitized || bibText;
+    }
+    catch (_error) {
+        // If parsing fails, keep original output to avoid blocking user workflows.
+        return bibText;
+    }
 }
 async function postJsonRpc(method, params = []) {
     const jsonRpcUrl = (0, config_1.getJsonRpcUrl)();
@@ -96,13 +124,14 @@ async function getItemGroupName(key) {
 }
 exports.getItemGroupName = getItemGroupName;
 async function getBibliographyInGroup(keys, groupId) {
-    return postJsonRpc("item.export", [keys, (0, config_1.getLatexBibStyle)(), groupId]);
+    const bibText = await postJsonRpc("item.export", [keys, (0, config_1.getLatexBibStyle)(), groupId]);
+    return removeExcludedBibFields(String(bibText || ""));
 }
 exports.getBibliographyInGroup = getBibliographyInGroup;
 async function getBibtexFromZotero(citeKey) {
     try {
         const result = await postJsonRpc("item.export", [[citeKey], "bibtex"]);
-        return result ? String(result) : null;
+        return result ? removeExcludedBibFields(String(result)) : null;
     }
     catch (error) {
         if (error instanceof EndpointAccessError) {

@@ -25,6 +25,21 @@ export function getLatexBibStyle(): string {
   return getConfiguration().get("latexBibStyle", "bibtex");
 }
 
+export function getExcludedBibFields(): string[] {
+  const defaultFields = ["file", "annotation"];
+  const configuredValue = getConfiguration().get<unknown>("excludedBibFields", defaultFields);
+
+  if (!Array.isArray(configuredValue)) {
+    return defaultFields;
+  }
+
+  const normalized = configuredValue
+    .map((value) => String(value).trim().toLowerCase())
+    .filter((value) => value.length > 0);
+
+  return Array.from(new Set(normalized));
+}
+
 export function getDefaultBibName(): string {
   if (latestBibName === "") {
     latestBibName = getConfiguration().get("defaultBibName", "ref.bib");

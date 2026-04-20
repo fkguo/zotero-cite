@@ -19,7 +19,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getCaywUrl = exports.getJsonRpcUrl = exports.getMinimizeZotero = exports.setLatestBibName = exports.getDefaultBibName = exports.getLatexBibStyle = exports.getBibliographyStyle = exports.getShowCommandPickerInStatusBar = exports.getStatusMessageDuration = void 0;
+exports.getCaywUrl = exports.getJsonRpcUrl = exports.getMinimizeZotero = exports.setLatestBibName = exports.getDefaultBibName = exports.getExcludedBibFields = exports.getLatexBibStyle = exports.getBibliographyStyle = exports.getShowCommandPickerInStatusBar = exports.getStatusMessageDuration = void 0;
 const vscode = __importStar(require("vscode"));
 const CONFIG_SECTION = "zotero-cite";
 let latestBibName = "";
@@ -43,6 +43,18 @@ function getLatexBibStyle() {
     return getConfiguration().get("latexBibStyle", "bibtex");
 }
 exports.getLatexBibStyle = getLatexBibStyle;
+function getExcludedBibFields() {
+    const defaultFields = ["file", "annotation"];
+    const configuredValue = getConfiguration().get("excludedBibFields", defaultFields);
+    if (!Array.isArray(configuredValue)) {
+        return defaultFields;
+    }
+    const normalized = configuredValue
+        .map((value) => String(value).trim().toLowerCase())
+        .filter((value) => value.length > 0);
+    return Array.from(new Set(normalized));
+}
+exports.getExcludedBibFields = getExcludedBibFields;
 function getDefaultBibName() {
     if (latestBibName === "") {
         latestBibName = getConfiguration().get("defaultBibName", "ref.bib");

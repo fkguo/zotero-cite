@@ -15,6 +15,7 @@
 		"Other"
 	],
 	"activationEvents": [
+		"onStartupFinished",
 		"onCommand:zotero-cite.citeSmart",
 		"onCommand:zotero-cite.showTaskPicker"
 	],
@@ -127,6 +128,18 @@
 						"default": "bibtex",
 						"scope": "window",
 						"description": "%configuration.latexBibStyle.description%"
+					},
+					"zotero-cite.excludedBibFields": {
+						"type": "array",
+						"default": [
+							"file",
+							"annotation"
+						],
+						"items": {
+							"type": "string"
+						},
+						"scope": "window",
+						"description": "%configuration.excludedBibFields.description%"
 					},
 					"zotero-cite.minimizeZotero": {
 						"type": "string",

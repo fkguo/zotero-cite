@@ -2,11 +2,6 @@ import * as vscode from "vscode";
 
 import { t } from "./i18n";
 
-type CursorRoundText = {
-  startIndex: number;
-  content: string;
-};
-
 export function getActiveEditor(): vscode.TextEditor {
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
@@ -101,61 +96,48 @@ export function makeId(length: number): string {
 }
 
 function getKeyEnvOffset(editor: vscode.TextEditor): number | null {
-  const data = getCursorRoundText(editor);
-  if (!data) {
+  if (!editor.selection.isEmpty) {
     return null;
   }
 
   const cursorLocation = editor.document.offsetAt(editor.selection.active);
-  let pattern: RegExp | undefined;
-
-  if (editor.document.languageId === "markdown") {
-    pattern = /\[([@^][\w-:\d]+(;| ){0,2})+\]/g;
-  }
-
-  if (editor.document.languageId === "latex") {
-    pattern = /cite[tp]?\{([\w-:\d]+(,|，| ){0,2})+\}/g;
-  }
+  const pattern = getKeyEnvPattern(editor.document.languageId);
 
   if (!pattern) {
     return null;
   }
 
-  const matches = getMatchList(pattern, data.content);
+  const matches = getMatchList(pattern, editor.document.getText());
+  let bestEndIndex: number | null = null;
+  let bestRangeLength = Number.POSITIVE_INFINITY;
+
   for (const match of matches) {
-    const startIndex = match.index + data.startIndex;
-    const endIndex = match.index + match[0].length + data.startIndex;
-    if (cursorLocation >= startIndex && cursorLocation <= endIndex) {
-      return endIndex;
+    const startIndex = match.index;
+    const endIndex = match.index + match[0].length;
+
+    // Use [start, end) to avoid boundary ambiguities when citations are adjacent.
+    if (cursorLocation >= startIndex && cursorLocation < endIndex) {
+      const rangeLength = endIndex - startIndex;
+      if (rangeLength < bestRangeLength) {
+        bestRangeLength = rangeLength;
+        bestEndIndex = endIndex;
+      }
     }
   }
 
-  return null;
+  return bestEndIndex;
 }
 
-function getCursorRoundText(editor: vscode.TextEditor, length = 50): CursorRoundText | undefined {
-  const textLength = editor.document.getText().length;
-
-  if (!editor.selection.isEmpty) {
-    return undefined;
+function getKeyEnvPattern(languageId: string): RegExp | undefined {
+  if (languageId === "markdown") {
+    return /\[([@^][\w-:\d]+(;| ){0,2})+\]/g;
   }
 
-  const cursorPosition = editor.selection.active;
-  const cursorIndex = editor.document.offsetAt(cursorPosition);
+  if (languageId === "latex") {
+    return /cite[tp]?(\[[^\]]*\]){0,2}\{([\w-:\d]+(,|，| ){0,2})+\}/g;
+  }
 
-  const startIndex = Math.max(cursorIndex - length, 0);
-  const endIndex = Math.min(cursorIndex + length, textLength);
-
-  const startPos = editor.document.positionAt(startIndex);
-  const endPos = editor.document.positionAt(endIndex);
-
-  const range = new vscode.Range(startPos, endPos);
-  const text = editor.document.getText(range);
-
-  return {
-    startIndex,
-    content: text,
-  };
+  return undefined;
 }
 
 function getMatchList(pattern: RegExp, text: string): RegExpExecArray[] {

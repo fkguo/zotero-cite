@@ -1,7 +1,25 @@
 import axios from "axios";
 
-import { getBibliographyStyle, getCaywUrl, getJsonRpcUrl, getLatexBibStyle, getMinimizeZotero } from "./config";
+import {
+  getBibliographyStyle,
+  getCaywUrl,
+  getExcludedBibFields,
+  getJsonRpcUrl,
+  getLatexBibStyle,
+  getMinimizeZotero,
+} from "./config";
 import { errorToMessage, t } from "./i18n";
+
+const bibtexParse = require("@orcid/bibtex-parse-js") as {
+  toJSON: (content: string) => Array<Record<string, unknown>>;
+  toBibtex: (entries: unknown[], compact: boolean) => string;
+};
+
+type ParsedBibEntry = {
+  citationKey?: string;
+  entryType?: string;
+  entryTags?: Record<string, unknown>;
+};
 
 type JsonRpcError = {
   message?: string;
@@ -28,6 +46,36 @@ function createEndpointAccessError(
       message: errorToMessage(error),
     })
   );
+}
+
+function removeExcludedBibFields(bibText: string): string {
+  if (!bibText.trim()) {
+    return bibText;
+  }
+
+  const excludedFields = new Set(getExcludedBibFields());
+  if (excludedFields.size === 0) {
+    return bibText;
+  }
+
+  try {
+    const entries = bibtexParse.toJSON(bibText) as ParsedBibEntry[];
+    entries.forEach((entry) => {
+      const entryTags = (entry.entryTags || {}) as Record<string, unknown>;
+      Object.keys(entryTags).forEach((tagKey) => {
+        if (excludedFields.has(tagKey.toLowerCase())) {
+          delete entryTags[tagKey];
+        }
+      });
+      entry.entryTags = entryTags;
+    });
+
+    const sanitized = bibtexParse.toBibtex(entries, false);
+    return sanitized || bibText;
+  } catch (_error) {
+    // If parsing fails, keep original output to avoid blocking user workflows.
+    return bibText;
+  }
 }
 
 async function postJsonRpc<T>(method: string, params: unknown[] = []): Promise<T> {
@@ -121,13 +169,14 @@ export async function getItemGroupName(key: string): Promise<string> {
 }
 
 export async function getBibliographyInGroup(keys: string[], groupId: string): Promise<string> {
-  return postJsonRpc<string>("item.export", [keys, getLatexBibStyle(), groupId]);
+  const bibText = await postJsonRpc<string>("item.export", [keys, getLatexBibStyle(), groupId]);
+  return removeExcludedBibFields(String(bibText || ""));
 }
 
 export async function getBibtexFromZotero(citeKey: string): Promise<string | null> {
   try {
     const result = await postJsonRpc<string>("item.export", [[citeKey], "bibtex"]);
-    return result ? String(result) : null;
+    return result ? removeExcludedBibFields(String(result)) : null;
   } catch (error) {
     if (error instanceof EndpointAccessError) {
       throw error;
