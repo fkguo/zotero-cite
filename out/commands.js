@@ -67,6 +67,21 @@ const runnableCommands = [
         languages: ["bibtex", "latex"],
     },
 ];
+function supportsLanguage(document, language) {
+    if (language === "markdown") {
+        return (0, editor_1.isMarkdownLikeDocument)(document);
+    }
+    return document.languageId === language;
+}
+function supportsCommand(document, command) {
+    return command.languages.some((language) => supportsLanguage(document, language));
+}
+function getLanguageLabel(language) {
+    if (language === "markdown") {
+        return "markdown/qmd/rmd";
+    }
+    return language;
+}
 async function exportBibLatex() {
     try {
         const editor = (0, editor_1.getActiveEditor)();
@@ -154,14 +169,14 @@ async function showTaskPicker() {
     try {
         const editor = (0, editor_1.getActiveEditor)();
         const languageId = editor.document.languageId;
-        const availableCommands = runnableCommands.filter((item) => item.languages.includes(languageId));
+        const availableCommands = runnableCommands.filter((item) => supportsCommand(editor.document, item));
         if (availableCommands.length === 0) {
             (0, ui_1.showErrorMessage)((0, i18n_1.t)("error.noRunnableCommandForLanguage", { lang: languageId }));
             return;
         }
         const items = availableCommands.map((item) => ({
             label: (0, i18n_1.t)(item.labelKey),
-            description: (0, i18n_1.t)("quickPick.availableFor", { langs: item.languages.join(", ") }),
+            description: (0, i18n_1.t)("quickPick.availableFor", { langs: item.languages.map((lang) => getLanguageLabel(lang)).join(", ") }),
             commandId: item.id,
         }));
         const picked = await vscode.window.showQuickPick(items, {
@@ -228,7 +243,7 @@ async function addHyperLinkCitation() {
         }
         const key = (0, editor_1.makeId)(8);
         const keyContent = `[^${key}]`;
-        if (editor.document.languageId === "markdown") {
+        if ((0, editor_1.isMarkdownLikeDocument)(editor.document)) {
             await (0, editor_1.insertTextAsync)(keyContent, -1, editor);
             await appendMarkdownFootnoteDefinition(key, `<${clipboardContent}>`, editor);
         }
@@ -298,7 +313,7 @@ async function citeSmart() {
     try {
         const editor = (0, editor_1.getActiveEditor)();
         const lang = editor.document.languageId;
-        if (lang === "markdown") {
+        if ((0, editor_1.isMarkdownLikeDocument)(editor.document)) {
             await citeMarkdownBibliography();
             return;
         }

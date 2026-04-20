@@ -21,6 +21,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.registerMarkdownCitationPreview = void 0;
 const vscode = __importStar(require("vscode"));
+const editor_1 = require("./editor");
 const bibPath_1 = require("./bibPath");
 const config_1 = require("./config");
 const i18n_1 = require("./i18n");
@@ -35,7 +36,7 @@ const localBibCache = new Map();
 const zoteroPreviewCache = new Map();
 const zoteroPendingRequests = new Map();
 function registerMarkdownCitationPreview(context) {
-    const hoverProvider = vscode.languages.registerHoverProvider({ language: "markdown" }, {
+    const hoverProvider = vscode.languages.registerHoverProvider([{ language: "markdown" }, { pattern: "**/*.qmd" }, { pattern: "**/*.rmd" }], {
         provideHover: (document, position) => provideMarkdownCitationHover(document, position),
     });
     context.subscriptions.push(hoverProvider, vscode.workspace.onDidChangeTextDocument((event) => {
@@ -54,6 +55,9 @@ function registerMarkdownCitationPreview(context) {
 }
 exports.registerMarkdownCitationPreview = registerMarkdownCitationPreview;
 async function provideMarkdownCitationHover(document, position) {
+    if (!(0, editor_1.isMarkdownLikeDocument)(document)) {
+        return undefined;
+    }
     if (!(0, config_1.getShowMarkdownCitationHoverPreview)()) {
         return undefined;
     }

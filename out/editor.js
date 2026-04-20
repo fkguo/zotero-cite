@@ -19,9 +19,19 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.makeId = exports.insertCiteKeys = exports.getDocumentCiteKeys = exports.insertTextAsync = exports.insertText = exports.getActiveEditor = void 0;
+exports.makeId = exports.insertCiteKeys = exports.getDocumentCiteKeys = exports.insertTextAsync = exports.insertText = exports.getActiveEditor = exports.isMarkdownLikeDocument = void 0;
 const vscode = __importStar(require("vscode"));
 const i18n_1 = require("./i18n");
+const MARKDOWN_LIKE_LANGUAGE_IDS = new Set(["markdown", "quarto", "rmd"]);
+const MARKDOWN_LIKE_EXTENSIONS = [".md", ".markdown", ".qmd", ".rmd"];
+function isMarkdownLikeDocument(document) {
+    if (MARKDOWN_LIKE_LANGUAGE_IDS.has(document.languageId)) {
+        return true;
+    }
+    const lowerPath = document.uri.path.toLowerCase();
+    return MARKDOWN_LIKE_EXTENSIONS.some((ext) => lowerPath.endsWith(ext));
+}
+exports.isMarkdownLikeDocument = isMarkdownLikeDocument;
 function getActiveEditor() {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
@@ -69,7 +79,7 @@ function getDocumentCiteKeys(editor = getActiveEditor()) {
         content = content.replace(/，/g, ",");
     }
     let pattern;
-    if (editor.document.languageId === "markdown") {
+    if (isMarkdownLikeDocument(editor.document)) {
         pattern = /\[([@^][\w-:\d]+(;| ){0,2})+\]/g;
     }
     if (editor.document.languageId === "latex") {
@@ -92,7 +102,7 @@ function insertCiteKeys(keyList, editor = getActiveEditor()) {
             insertText(", " + keyList.join(", "), addLocation - 1, editor);
         }
     }
-    if (editor.document.languageId === "markdown") {
+    if (isMarkdownLikeDocument(editor.document)) {
         if (addLocation === null) {
             insertText("[" + keyList.map((v) => "@" + v).join("; ") + "]", -1, editor);
         }
@@ -116,7 +126,7 @@ function getKeyEnvOffset(editor) {
         return null;
     }
     const cursorLocation = editor.document.offsetAt(editor.selection.active);
-    const pattern = getKeyEnvPattern(editor.document.languageId);
+    const pattern = getKeyEnvPattern(editor.document);
     if (!pattern) {
         return null;
     }
@@ -137,11 +147,11 @@ function getKeyEnvOffset(editor) {
     }
     return bestEndIndex;
 }
-function getKeyEnvPattern(languageId) {
-    if (languageId === "markdown") {
+function getKeyEnvPattern(document) {
+    if (isMarkdownLikeDocument(document)) {
         return /\[([@^][\w-:\d]+(;| ){0,2})+\]/g;
     }
-    if (languageId === "latex") {
+    if (document.languageId === "latex") {
         return /cite[tp]?(\[[^\]]*\]){0,2}\{([\w-:\d]+(,|，| ){0,2})+\}/g;
     }
     return undefined;

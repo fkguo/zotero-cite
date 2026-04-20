@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 
+import { isMarkdownLikeDocument } from "./editor";
 import { resolveBibPath, validateBibName } from "./bibPath";
 import { getDefaultBibName, getShowMarkdownCitationCompletion } from "./config";
 import { t } from "./i18n";
@@ -48,7 +49,7 @@ const zoteroPendingRequests = new Map<string, Promise<string | undefined>>();
 
 export function registerMarkdownCitationCompletion(context: vscode.ExtensionContext): void {
   const provider = vscode.languages.registerCompletionItemProvider(
-    { language: "markdown" },
+    [{ language: "markdown" }, { pattern: "**/*.qmd" }, { pattern: "**/*.rmd" }],
     {
       provideCompletionItems: (document, position) => provideCitationCompletions(document, position),
     },
@@ -87,6 +88,10 @@ async function provideCitationCompletions(
   document: vscode.TextDocument,
   position: vscode.Position
 ): Promise<vscode.CompletionItem[] | undefined> {
+  if (!isMarkdownLikeDocument(document)) {
+    return undefined;
+  }
+
   if (!getShowMarkdownCitationCompletion()) {
     return undefined;
   }

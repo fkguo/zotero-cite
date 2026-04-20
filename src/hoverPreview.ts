@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 
+import { isMarkdownLikeDocument } from "./editor";
 import { resolveBibPath, validateBibName } from "./bibPath";
 import { getDefaultBibName, getShowMarkdownCitationHoverPreview } from "./config";
 import { t } from "./i18n";
@@ -42,9 +43,12 @@ const zoteroPreviewCache = new Map<string, ZoteroCacheEntry>();
 const zoteroPendingRequests = new Map<string, Promise<string | undefined>>();
 
 export function registerMarkdownCitationPreview(context: vscode.ExtensionContext): void {
-  const hoverProvider = vscode.languages.registerHoverProvider({ language: "markdown" }, {
+  const hoverProvider = vscode.languages.registerHoverProvider(
+    [{ language: "markdown" }, { pattern: "**/*.qmd" }, { pattern: "**/*.rmd" }],
+    {
     provideHover: (document, position) => provideMarkdownCitationHover(document, position),
-  });
+    }
+  );
 
   context.subscriptions.push(
     hoverProvider,
@@ -70,6 +74,10 @@ async function provideMarkdownCitationHover(
   document: vscode.TextDocument,
   position: vscode.Position
 ): Promise<vscode.Hover | undefined> {
+  if (!isMarkdownLikeDocument(document)) {
+    return undefined;
+  }
+
   if (!getShowMarkdownCitationHoverPreview()) {
     return undefined;
   }

@@ -11,7 +11,15 @@ import {
 import { resolveBibPath, validateBibName } from "./bibPath";
 import { getBibliography } from "./bibliography";
 import { getDefaultBibName, setLatestBibName } from "./config";
-import { getActiveEditor, getDocumentCiteKeys, insertCiteKeys, insertText, insertTextAsync, makeId } from "./editor";
+import {
+  getActiveEditor,
+  getDocumentCiteKeys,
+  insertCiteKeys,
+  insertText,
+  insertTextAsync,
+  isMarkdownLikeDocument,
+  makeId,
+} from "./editor";
 import { errorToMessage, t } from "./i18n";
 import { getOutputChannel, showErrorMessage, showInformationMessage, showStatusMessage } from "./ui";
 import { getBibtexFromZotero, getMarkdownBibliography, pickCiteKeys } from "./zotero";
@@ -63,6 +71,26 @@ const runnableCommands: RunnableCommand[] = [
     languages: ["bibtex", "latex"],
   },
 ];
+
+function supportsLanguage(document: vscode.TextDocument, language: string): boolean {
+  if (language === "markdown") {
+    return isMarkdownLikeDocument(document);
+  }
+
+  return document.languageId === language;
+}
+
+function supportsCommand(document: vscode.TextDocument, command: RunnableCommand): boolean {
+  return command.languages.some((language) => supportsLanguage(document, language));
+}
+
+function getLanguageLabel(language: string): string {
+  if (language === "markdown") {
+    return "markdown/qmd/rmd";
+  }
+
+  return language;
+}
 
 async function exportBibLatex(): Promise<void> {
   try {
@@ -172,7 +200,7 @@ async function showTaskPicker(): Promise<void> {
     const editor = getActiveEditor();
     const languageId = editor.document.languageId;
 
-    const availableCommands = runnableCommands.filter((item) => item.languages.includes(languageId));
+    const availableCommands = runnableCommands.filter((item) => supportsCommand(editor.document, item));
     if (availableCommands.length === 0) {
       showErrorMessage(t("error.noRunnableCommandForLanguage", { lang: languageId }));
       return;
@@ -180,7 +208,7 @@ async function showTaskPicker(): Promise<void> {
 
     const items: CommandPickItem[] = availableCommands.map((item) => ({
       label: t(item.labelKey),
-      description: t("quickPick.availableFor", { langs: item.languages.join(", ") }),
+      description: t("quickPick.availableFor", { langs: item.languages.map((lang) => getLanguageLabel(lang)).join(", ") }),
       commandId: item.id,
     }));
 
@@ -262,7 +290,7 @@ async function addHyperLinkCitation(): Promise<void> {
     const key = makeId(8);
     const keyContent = `[^${key}]`;
 
-    if (editor.document.languageId === "markdown") {
+    if (isMarkdownLikeDocument(editor.document)) {
       await insertTextAsync(keyContent, -1, editor);
       await appendMarkdownFootnoteDefinition(key, `<${clipboardContent}>`, editor);
     }
@@ -350,7 +378,7 @@ async function citeSmart(): Promise<void> {
     const editor = getActiveEditor();
     const lang = editor.document.languageId;
 
-    if (lang === "markdown") {
+    if (isMarkdownLikeDocument(editor.document)) {
       await citeMarkdownBibliography();
       return;
     }

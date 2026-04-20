@@ -2,6 +2,18 @@ import * as vscode from "vscode";
 
 import { t } from "./i18n";
 
+const MARKDOWN_LIKE_LANGUAGE_IDS = new Set(["markdown", "quarto", "rmd"]);
+const MARKDOWN_LIKE_EXTENSIONS = [".md", ".markdown", ".qmd", ".rmd"];
+
+export function isMarkdownLikeDocument(document: vscode.TextDocument): boolean {
+  if (MARKDOWN_LIKE_LANGUAGE_IDS.has(document.languageId)) {
+    return true;
+  }
+
+  const lowerPath = document.uri.path.toLowerCase();
+  return MARKDOWN_LIKE_EXTENSIONS.some((ext) => lowerPath.endsWith(ext));
+}
+
 export function getActiveEditor(): vscode.TextEditor {
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
@@ -50,7 +62,7 @@ export function getDocumentCiteKeys(editor: vscode.TextEditor = getActiveEditor(
   }
 
   let pattern: RegExp | undefined;
-  if (editor.document.languageId === "markdown") {
+  if (isMarkdownLikeDocument(editor.document)) {
     pattern = /\[([@^][\w-:\d]+(;| ){0,2})+\]/g;
   }
 
@@ -77,7 +89,7 @@ export function insertCiteKeys(keyList: string[], editor: vscode.TextEditor = ge
     }
   }
 
-  if (editor.document.languageId === "markdown") {
+  if (isMarkdownLikeDocument(editor.document)) {
     if (addLocation === null) {
       insertText("[" + keyList.map((v) => "@" + v).join("; ") + "]", -1, editor);
     } else {
@@ -101,7 +113,7 @@ function getKeyEnvOffset(editor: vscode.TextEditor): number | null {
   }
 
   const cursorLocation = editor.document.offsetAt(editor.selection.active);
-  const pattern = getKeyEnvPattern(editor.document.languageId);
+  const pattern = getKeyEnvPattern(editor.document);
 
   if (!pattern) {
     return null;
@@ -128,12 +140,12 @@ function getKeyEnvOffset(editor: vscode.TextEditor): number | null {
   return bestEndIndex;
 }
 
-function getKeyEnvPattern(languageId: string): RegExp | undefined {
-  if (languageId === "markdown") {
+function getKeyEnvPattern(document: vscode.TextDocument): RegExp | undefined {
+  if (isMarkdownLikeDocument(document)) {
     return /\[([@^][\w-:\d]+(;| ){0,2})+\]/g;
   }
 
-  if (languageId === "latex") {
+  if (document.languageId === "latex") {
     return /cite[tp]?(\[[^\]]*\]){0,2}\{([\w-:\d]+(,|，| ){0,2})+\}/g;
   }
 

@@ -71,7 +71,7 @@
 			"editor/title": [
 				{
 					"command": "zotero-cite.citeSmart",
-					"when": "editorLangId == 'latex' || editorLangId == 'markdown'",
+					"when": "editorLangId == 'latex' || editorLangId == 'markdown' || resourceExtname == '.qmd' || resourceExtname == '.rmd'",
 					"group": "navigation@10"
 				}
 			],
@@ -82,23 +82,23 @@
 				},
 				{
 					"command": "zotero-cite.exportBibLatex",
-					"when": "editorLangId == 'latex' || editorLangId == 'markdown'"
+					"when": "editorLangId == 'latex' || editorLangId == 'markdown' || resourceExtname == '.qmd' || resourceExtname == '.rmd'"
 				},
 				{
 					"command": "zotero-cite.addCitation",
-					"when": "editorLangId == 'latex' || editorLangId == 'markdown'"
+					"when": "editorLangId == 'latex' || editorLangId == 'markdown' || resourceExtname == '.qmd' || resourceExtname == '.rmd'"
 				},
 				{
 					"command": "zotero-cite.citeBibliography",
-					"when": "editorLangId == 'latex' || editorLangId == 'markdown'"
+					"when": "editorLangId == 'latex' || editorLangId == 'markdown' || resourceExtname == '.qmd' || resourceExtname == '.rmd'"
 				},
 				{
 					"command": "zotero-cite.citeMarkdownBibliography",
-					"when": "editorLangId == 'latex' || editorLangId == 'markdown'"
+					"when": "editorLangId == 'latex' || editorLangId == 'markdown' || resourceExtname == '.qmd' || resourceExtname == '.rmd'"
 				},
 				{
 					"command": "zotero-cite.addHyperLinkCitation",
-					"when": "editorLangId == 'markdown'"
+					"when": "editorLangId == 'markdown' || resourceExtname == '.qmd' || resourceExtname == '.rmd'"
 				},
 				{
 					"command": "zotero-cite.updateBibtexFromZotero",

@@ -21,6 +21,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.registerMarkdownCitationCompletion = void 0;
 const vscode = __importStar(require("vscode"));
+const editor_1 = require("./editor");
 const bibPath_1 = require("./bibPath");
 const config_1 = require("./config");
 const i18n_1 = require("./i18n");
@@ -36,7 +37,7 @@ const localBibCache = new Map();
 const zoteroPreviewCache = new Map();
 const zoteroPendingRequests = new Map();
 function registerMarkdownCitationCompletion(context) {
-    const provider = vscode.languages.registerCompletionItemProvider({ language: "markdown" }, {
+    const provider = vscode.languages.registerCompletionItemProvider([{ language: "markdown" }, { pattern: "**/*.qmd" }, { pattern: "**/*.rmd" }], {
         provideCompletionItems: (document, position) => provideCitationCompletions(document, position),
     }, "@", "^");
     context.subscriptions.push(provider, vscode.workspace.onDidChangeTextDocument((event) => {
@@ -59,6 +60,9 @@ function registerMarkdownCitationCompletion(context) {
 }
 exports.registerMarkdownCitationCompletion = registerMarkdownCitationCompletion;
 async function provideCitationCompletions(document, position) {
+    if (!(0, editor_1.isMarkdownLikeDocument)(document)) {
+        return undefined;
+    }
     if (!(0, config_1.getShowMarkdownCitationCompletion)()) {
         return undefined;
     }
