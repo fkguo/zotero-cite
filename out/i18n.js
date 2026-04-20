@@ -194,6 +194,14 @@ const messages = {
         en: "Update BibTeX Entries",
         zhCN: "更新 BibTeX 条目",
     },
+    "statusBar.taskPickerText": {
+        en: "$(list-selection) Zotero",
+        zhCN: "$(list-selection) Zotero",
+    },
+    "statusBar.taskPickerTooltip": {
+        en: "Open Zotero command picker",
+        zhCN: "打开 Zotero 命令选择器",
+    },
     "activate.message": {
         en: "Your extension \"zotero-cite\" is now active.",
         zhCN: "扩展 \"zotero-cite\" 已激活。",

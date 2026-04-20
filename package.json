@@ -27,7 +27,11 @@
 		"commands": [
 			{
 				"command": "zotero-cite.showTaskPicker",
-				"title": "%command.showTaskPicker.title%"
+				"title": "%command.showTaskPicker.title%",
+				"icon": {
+					"light": "images/cite-light.svg",
+					"dark": "images/cite-dark.svg"
+				}
 			},
 			{
 				"command": "zotero-cite.citeSmart",
@@ -64,11 +68,6 @@
 		],
 		"menus": {
 			"editor/title": [
-				{
-					"command": "zotero-cite.showTaskPicker",
-					"when": "editorTextFocus",
-					"group": "navigation@9"
-				},
 				{
 					"command": "zotero-cite.citeSmart",
 					"when": "editorLangId == 'latex' || editorLangId == 'markdown'",
@@ -153,6 +152,12 @@
 						"minimum": 300,
 						"scope": "window",
 						"description": "%configuration.statusMessageDuration.description%"
+					},
+					"zotero-cite.showCommandPickerInStatusBar": {
+						"type": "boolean",
+						"default": true,
+						"scope": "window",
+						"description": "%configuration.showCommandPickerInStatusBar.description%"
 					}
 				}
 			}

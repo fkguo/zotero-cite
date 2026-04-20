@@ -19,7 +19,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getCaywUrl = exports.getJsonRpcUrl = exports.getMinimizeZotero = exports.setLatestBibName = exports.getDefaultBibName = exports.getLatexBibStyle = exports.getBibliographyStyle = exports.getStatusMessageDuration = void 0;
+exports.getCaywUrl = exports.getJsonRpcUrl = exports.getMinimizeZotero = exports.setLatestBibName = exports.getDefaultBibName = exports.getLatexBibStyle = exports.getBibliographyStyle = exports.getShowCommandPickerInStatusBar = exports.getStatusMessageDuration = void 0;
 const vscode = __importStar(require("vscode"));
 const CONFIG_SECTION = "zotero-cite";
 let latestBibName = "";
@@ -31,6 +31,10 @@ function getStatusMessageDuration() {
     return Number.isFinite(duration) && duration > 0 ? duration : 1500;
 }
 exports.getStatusMessageDuration = getStatusMessageDuration;
+function getShowCommandPickerInStatusBar() {
+    return getConfiguration().get("showCommandPickerInStatusBar", true);
+}
+exports.getShowCommandPickerInStatusBar = getShowCommandPickerInStatusBar;
 function getBibliographyStyle() {
     return getConfiguration().get("bibliograpyStyle", "http://www.zotero.org/styles/apa");
 }

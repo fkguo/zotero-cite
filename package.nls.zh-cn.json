@@ -16,5 +16,6 @@
   "configuration.minimizeZotero.description": "填写任意非空值后，插入引用时将最小化 Zotero 窗口",
   "configuration.jsonRpcUrl.description": "Better BibTeX JSON-RPC 接口地址",
   "configuration.caywUrl.description": "Better BibTeX CAYW 接口地址",
-  "configuration.statusMessageDuration.description": "状态栏消息显示时长（毫秒）"
+  "configuration.statusMessageDuration.description": "状态栏消息显示时长（毫秒）",
+  "configuration.showCommandPickerInStatusBar.description": "是否在状态栏显示 Zotero 命令选择器按钮"
 }

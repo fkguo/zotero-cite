@@ -13,6 +13,10 @@ export function getStatusMessageDuration(): number {
   return Number.isFinite(duration) && duration > 0 ? duration : 1500;
 }
 
+export function getShowCommandPickerInStatusBar(): boolean {
+  return getConfiguration().get<boolean>("showCommandPickerInStatusBar", true);
+}
+
 export function getBibliographyStyle(): string {
   return getConfiguration().get("bibliograpyStyle", "http://www.zotero.org/styles/apa");
 }

@@ -16,5 +16,6 @@
   "configuration.minimizeZotero.description": "Any non-empty value minimizes the Zotero window after citation",
   "configuration.jsonRpcUrl.description": "Better BibTeX JSON-RPC endpoint URL",
   "configuration.caywUrl.description": "Better BibTeX CAYW endpoint URL",
-  "configuration.statusMessageDuration.description": "Status bar message duration in milliseconds"
+  "configuration.statusMessageDuration.description": "Status bar message duration in milliseconds",
+  "configuration.showCommandPickerInStatusBar.description": "Show Zotero command picker button in the status bar"
 }

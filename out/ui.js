@@ -19,10 +19,12 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.disposeUiResources = exports.showInformationMessage = exports.showErrorMessage = exports.showStatusMessage = exports.getOutputChannel = void 0;
+exports.disposeUiResources = exports.initializeUi = exports.showInformationMessage = exports.showErrorMessage = exports.showStatusMessage = exports.getOutputChannel = void 0;
 const vscode = __importStar(require("vscode"));
 const config_1 = require("./config");
+const i18n_1 = require("./i18n");
 const outputChannel = vscode.window.createOutputChannel("Zotero Cite");
+const taskPickerStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 1100);
 function getOutputChannel() {
     return outputChannel;
 }
@@ -39,8 +41,34 @@ function showInformationMessage(message) {
     void vscode.window.showInformationMessage(message);
 }
 exports.showInformationMessage = showInformationMessage;
+function updateTaskPickerStatusBarItem() {
+    if (!(0, config_1.getShowCommandPickerInStatusBar)()) {
+        taskPickerStatusBarItem.hide();
+        return;
+    }
+    if (!vscode.window.activeTextEditor) {
+        taskPickerStatusBarItem.hide();
+        return;
+    }
+    taskPickerStatusBarItem.text = (0, i18n_1.t)("statusBar.taskPickerText");
+    taskPickerStatusBarItem.tooltip = (0, i18n_1.t)("statusBar.taskPickerTooltip");
+    taskPickerStatusBarItem.command = "zotero-cite.showTaskPicker";
+    taskPickerStatusBarItem.show();
+}
+function initializeUi(context) {
+    updateTaskPickerStatusBarItem();
+    context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(() => {
+        updateTaskPickerStatusBarItem();
+    }), vscode.workspace.onDidChangeConfiguration((event) => {
+        if (event.affectsConfiguration("zotero-cite.showCommandPickerInStatusBar")) {
+            updateTaskPickerStatusBarItem();
+        }
+    }));
+}
+exports.initializeUi = initializeUi;
 function disposeUiResources() {
     outputChannel.dispose();
+    taskPickerStatusBarItem.dispose();
 }
 exports.disposeUiResources = disposeUiResources;
 //# sourceMappingURL=ui.js.map
