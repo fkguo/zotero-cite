@@ -234,6 +234,30 @@ const messages = {
         en: "Found local BibTeX entry for key {key}.",
         zhCN: "已找到键 {key} 的本地 BibTeX 条目。",
     },
+    "completion.source.footnote": {
+        en: "Existing footnote",
+        zhCN: "已有脚注",
+    },
+    "completion.source.localBib": {
+        en: "Local BibTeX",
+        zhCN: "本地 BibTeX",
+    },
+    "completion.source.document": {
+        en: "Existing in document",
+        zhCN: "文档中已使用",
+    },
+    "completion.noSummary": {
+        en: "No summary available",
+        zhCN: "暂无摘要信息",
+    },
+    "completion.summary.existingDocument": {
+        en: "Citation key {key} already appears in the current document.",
+        zhCN: "引用键 {key} 已在当前文档中出现。",
+    },
+    "completion.summary.localBibFallback": {
+        en: "Found local BibTeX entry for key {key}.",
+        zhCN: "已找到键 {key} 的本地 BibTeX 条目。",
+    },
     "activate.message": {
         en: "Your extension \"zotero-cite\" is now active.",
         zhCN: "扩展 \"zotero-cite\" 已激活。",
