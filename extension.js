@@ -929,6 +929,37 @@ async function updateBibEntries() {
   }
 }
 
+/**
+ * Smart entrypoint for the editor title button:
+ * - markdown: cite + footnote bibliography
+ * - latex: cite + update .bib file
+ */
+async function citeSmart() {
+  try {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+      showErrorMessage("No active text editor found.");
+      return;
+    }
+
+    const lang = editor.document.languageId;
+    if (lang === "markdown") {
+      await citeMarkdownBibliography();
+      return;
+    }
+
+    if (lang === "latex") {
+      await citeBibliography();
+      return;
+    }
+
+    showErrorMessage(`Unsupported language: ${lang}`);
+  } catch (err) {
+    const message = err && err.message ? err.message : String(err);
+    showErrorMessage(message);
+  }
+}
+
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 
@@ -944,6 +975,10 @@ function activate(context) {
   // Now provide the implementation of the command with  registerCommand
   // The commandId parameter must match the command field in package.json
   const commands = [
+    {
+      id: "zotero-cite.citeSmart",
+      command: citeSmart,
+    },
     {
       id: "zotero-cite.exportBibLatex",
       command: exportBibLatex,

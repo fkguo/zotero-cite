@@ -14,7 +14,9 @@
 	"categories": [
 		"Other"
 	],
-	"activationEvents": [],
+	"activationEvents": [
+		"onCommand:zotero-cite.citeSmart"
+	],
 	"extensionKind": [
 		"ui",
 		"workspace"
@@ -22,6 +24,14 @@
 	"main": "./extension.js",
 	"contributes": {
 		"commands": [
+			{
+				"command": "zotero-cite.citeSmart",
+				"title": "Zotero Cite: Cite + Bibliography",
+				"icon": {
+					"light": "images/cite-light.svg",
+					"dark": "images/cite-dark.svg"
+				}
+			},
 			{
 				"command": "zotero-cite.exportBibLatex",
 				"title": "Zotero Cite: Export BibLatex"
@@ -48,6 +58,13 @@
 			}
 		],
 		"menus": {
+			"editor/title": [
+				{
+					"command": "zotero-cite.citeSmart",
+					"when": "editorLangId == 'latex' || editorLangId == 'markdown'",
+					"group": "navigation@10"
+				}
+			],
 			"commandPalette": [
 				{
 					"command": "zotero-cite.exportBibLatex",
