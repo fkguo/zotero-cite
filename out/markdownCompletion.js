@@ -37,7 +37,7 @@ const localBibCache = new Map();
 const zoteroPreviewCache = new Map();
 const zoteroPendingRequests = new Map();
 function registerMarkdownCitationCompletion(context) {
-    const provider = vscode.languages.registerCompletionItemProvider([{ language: "markdown" }, { pattern: "**/*.qmd" }, { pattern: "**/*.rmd" }], {
+    const provider = vscode.languages.registerCompletionItemProvider([{ language: "markdown" }, { pattern: "**/*.qmd" }, { pattern: "**/*.rmd" }, { pattern: "**/*.mdx" }], {
         provideCompletionItems: (document, position) => provideCitationCompletions(document, position),
     }, "@", "^");
     context.subscriptions.push(provider, vscode.workspace.onDidChangeTextDocument((event) => {

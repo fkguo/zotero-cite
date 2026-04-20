@@ -49,7 +49,7 @@ const zoteroPendingRequests = new Map<string, Promise<string | undefined>>();
 
 export function registerMarkdownCitationCompletion(context: vscode.ExtensionContext): void {
   const provider = vscode.languages.registerCompletionItemProvider(
-    [{ language: "markdown" }, { pattern: "**/*.qmd" }, { pattern: "**/*.rmd" }],
+    [{ language: "markdown" }, { pattern: "**/*.qmd" }, { pattern: "**/*.rmd" }, { pattern: "**/*.mdx" }],
     {
       provideCompletionItems: (document, position) => provideCitationCompletions(document, position),
     },

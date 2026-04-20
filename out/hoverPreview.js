@@ -36,7 +36,7 @@ const localBibCache = new Map();
 const zoteroPreviewCache = new Map();
 const zoteroPendingRequests = new Map();
 function registerMarkdownCitationPreview(context) {
-    const hoverProvider = vscode.languages.registerHoverProvider([{ language: "markdown" }, { pattern: "**/*.qmd" }, { pattern: "**/*.rmd" }], {
+    const hoverProvider = vscode.languages.registerHoverProvider([{ language: "markdown" }, { pattern: "**/*.qmd" }, { pattern: "**/*.rmd" }, { pattern: "**/*.mdx" }], {
         provideHover: (document, position) => provideMarkdownCitationHover(document, position),
     });
     context.subscriptions.push(hoverProvider, vscode.workspace.onDidChangeTextDocument((event) => {

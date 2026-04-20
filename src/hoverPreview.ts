@@ -44,7 +44,7 @@ const zoteroPendingRequests = new Map<string, Promise<string | undefined>>();
 
 export function registerMarkdownCitationPreview(context: vscode.ExtensionContext): void {
   const hoverProvider = vscode.languages.registerHoverProvider(
-    [{ language: "markdown" }, { pattern: "**/*.qmd" }, { pattern: "**/*.rmd" }],
+    [{ language: "markdown" }, { pattern: "**/*.qmd" }, { pattern: "**/*.rmd" }, { pattern: "**/*.mdx" }],
     {
     provideHover: (document, position) => provideMarkdownCitationHover(document, position),
     }

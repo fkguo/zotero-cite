@@ -1,4 +1,4 @@
-在markdown、pandoc（.md后缀）、quarto（.qmd后缀）、R Markdown（.rmd后缀）以及latex文件的编写过程中，如果想要实现类似ms word文件的编辑过程，边插入边更新bib文件。或者想将当前文件的`key`列表，导出最终的bib文件，那么该插件就非常适合你。
+在markdown、pandoc（.md后缀）、quarto（.qmd后缀）、R Markdown（.rmd后缀）、MDX（.mdx后缀）以及latex文件的编写过程中，如果想要实现类似ms word文件的编辑过程，边插入边更新bib文件。或者想将当前文件的`key`列表，导出最终的bib文件，那么该插件就非常适合你。
 
 ## 自动融合远程 Pull Requests
 
@@ -58,7 +58,7 @@ npm run sync:prs -- --remote upstream --limit 5
 
 - Zotero Cite: Cite and Create Bibliography for Markdown
 
-如果你想在markdown / quarto（.qmd）/ R Markdown（.rmd）文档的书写过程中，希望插入citation的同时更新脚注，那么这个功能比较适合你。
+如果你想在markdown / quarto（.qmd）/ R Markdown（.rmd）/ MDX（.mdx）文档的书写过程中，希望插入citation的同时更新脚注，那么这个功能比较适合你。
 
 
 ![add citation and add bibliography for markdown.gif](https://s2.loli.net/2022/02/07/IcuWZpy7zLJFUsY.gif)

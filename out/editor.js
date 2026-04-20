@@ -22,8 +22,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.makeId = exports.insertCiteKeys = exports.getDocumentCiteKeys = exports.insertTextAsync = exports.insertText = exports.getActiveEditor = exports.isMarkdownLikeDocument = void 0;
 const vscode = __importStar(require("vscode"));
 const i18n_1 = require("./i18n");
-const MARKDOWN_LIKE_LANGUAGE_IDS = new Set(["markdown", "quarto", "rmd"]);
-const MARKDOWN_LIKE_EXTENSIONS = [".md", ".markdown", ".qmd", ".rmd"];
+const MARKDOWN_LIKE_LANGUAGE_IDS = new Set(["markdown", "quarto", "rmd", "mdx"]);
+const MARKDOWN_LIKE_EXTENSIONS = [".md", ".markdown", ".qmd", ".rmd", ".mdx"];
 function isMarkdownLikeDocument(document) {
     if (MARKDOWN_LIKE_LANGUAGE_IDS.has(document.languageId)) {
         return true;

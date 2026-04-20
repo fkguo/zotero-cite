@@ -78,7 +78,7 @@ function supportsCommand(document, command) {
 }
 function getLanguageLabel(language) {
     if (language === "markdown") {
-        return "markdown/qmd/rmd";
+        return "markdown/qmd/rmd/mdx";
     }
     return language;
 }

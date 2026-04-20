@@ -2,8 +2,8 @@ import * as vscode from "vscode";
 
 import { t } from "./i18n";
 
-const MARKDOWN_LIKE_LANGUAGE_IDS = new Set(["markdown", "quarto", "rmd"]);
-const MARKDOWN_LIKE_EXTENSIONS = [".md", ".markdown", ".qmd", ".rmd"];
+const MARKDOWN_LIKE_LANGUAGE_IDS = new Set(["markdown", "quarto", "rmd", "mdx"]);
+const MARKDOWN_LIKE_EXTENSIONS = [".md", ".markdown", ".qmd", ".rmd", ".mdx"];
 
 export function isMarkdownLikeDocument(document: vscode.TextDocument): boolean {
   if (MARKDOWN_LIKE_LANGUAGE_IDS.has(document.languageId)) {

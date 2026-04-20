@@ -86,7 +86,7 @@ function supportsCommand(document: vscode.TextDocument, command: RunnableCommand
 
 function getLanguageLabel(language: string): string {
   if (language === "markdown") {
-    return "markdown/qmd/rmd";
+    return "markdown/qmd/rmd/mdx";
   }
 
   return language;
