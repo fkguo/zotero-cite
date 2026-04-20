@@ -18,5 +18,7 @@
   "configuration.jsonRpcUrl.description": "Better BibTeX JSON-RPC 接口地址",
   "configuration.caywUrl.description": "Better BibTeX CAYW 接口地址",
   "configuration.statusMessageDuration.description": "状态栏消息显示时长（毫秒）",
-  "configuration.showCommandPickerInStatusBar.description": "是否在状态栏显示 Zotero 命令选择器按钮"
+  "configuration.showCommandPickerInStatusBar.description": "是否在状态栏显示 Zotero 命令选择器按钮",
+  "configuration.showMarkdownCitationHoverPreview.description": "是否显示 Markdown 中 [^key] 与 @key 的悬浮预览",
+  "configuration.showMarkdownCitationCompletion.description": "是否显示 Markdown 中 [^ 与 @ 的引用建议列表"
 }

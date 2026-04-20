@@ -17,6 +17,14 @@ export function getShowCommandPickerInStatusBar(): boolean {
   return getConfiguration().get<boolean>("showCommandPickerInStatusBar", true);
 }
 
+export function getShowMarkdownCitationHoverPreview(): boolean {
+  return getConfiguration().get<boolean>("showMarkdownCitationHoverPreview", true);
+}
+
+export function getShowMarkdownCitationCompletion(): boolean {
+  return getConfiguration().get<boolean>("showMarkdownCitationCompletion", true);
+}
+
 export function getBibliographyStyle(): string {
   return getConfiguration().get("bibliograpyStyle", "http://www.zotero.org/styles/apa");
 }

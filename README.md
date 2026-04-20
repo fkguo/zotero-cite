@@ -74,6 +74,8 @@ npm run sync:prs -- --remote upstream --limit 5
 ## 插件配置项
 - zotero-cite.defaultBibName：导出引用文件的默认路径。默认值为`ref.bib`。可以使用通配符：`${workspaceFolder}`、`${fileBasename}`、`${fileBasenameNoExtension}`、`${fileDirname}`、`${fileExtname}`。
 - zotero-cite.latexBibStyle：导出的LaTeX引用格式，应为`bibtex`或`biblatex`。默认值为`bibtex`。
+- zotero-cite.showMarkdownCitationHoverPreview：是否显示 Markdown 中 `[^key]` 与 `@key` 的 hover 预览。默认值为 `true`。
+- zotero-cite.showMarkdownCitationCompletion：是否显示 Markdown 中 `[^` 与 `@` 的引用建议列表。默认值为 `true`。
 
 
 ## 修改历史
@@ -90,7 +92,7 @@ npm run sync:prs -- --remote upstream --limit 5
 - 2024-07-09: 由于<https://gitee.com/aasll>用户的贡献，插件支持自定义ref文件的位置，并支持使用自定义通配符。
 - 2026-02-02: 由于<https://gitee.com/aasll>用户的贡献，在md和tex文件右上角添加了小按钮来插入引用。
 - 2026-02-04: 由于<https://gitee.com/aasll>用户贡献，修复了添加引用无法检测已经添加进来的重复条目的问题，修复了'update biblatex entries'功能，并增强了返回结果的体验。
-- 2026-04-20：将js插件转换成ts，模块化。增加了任务栏的命名选择按钮。
+- 2026-04-20：将js插件转换成ts，模块化。增加了任务栏的命名选择按钮，增加md文件中尖角引用和@引用的预览和建议列表功能，并做成可配置项。增加了json-rpc字段的排除配置（有时候一些不需要的字段不显示在bib文件中）。
 
 ## 教学视频
 

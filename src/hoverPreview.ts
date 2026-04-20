@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 
 import { resolveBibPath, validateBibName } from "./bibPath";
-import { getDefaultBibName } from "./config";
+import { getDefaultBibName, getShowMarkdownCitationHoverPreview } from "./config";
 import { t } from "./i18n";
 import { getMarkdownBibliography } from "./zotero";
 
@@ -70,6 +70,10 @@ async function provideMarkdownCitationHover(
   document: vscode.TextDocument,
   position: vscode.Position
 ): Promise<vscode.Hover | undefined> {
+  if (!getShowMarkdownCitationHoverPreview()) {
+    return undefined;
+  }
+
   const token = getCitationTokenAtPosition(document, position);
   if (!token) {
     return undefined;

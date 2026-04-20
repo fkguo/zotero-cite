@@ -18,5 +18,7 @@
   "configuration.jsonRpcUrl.description": "Better BibTeX JSON-RPC endpoint URL",
   "configuration.caywUrl.description": "Better BibTeX CAYW endpoint URL",
   "configuration.statusMessageDuration.description": "Status bar message duration in milliseconds",
-  "configuration.showCommandPickerInStatusBar.description": "Show Zotero command picker button in the status bar"
+  "configuration.showCommandPickerInStatusBar.description": "Show Zotero command picker button in the status bar",
+  "configuration.showMarkdownCitationHoverPreview.description": "Show Markdown citation hover preview for [^key] and @key",
+  "configuration.showMarkdownCitationCompletion.description": "Show Markdown citation completion suggestions for [^ and @"
 }

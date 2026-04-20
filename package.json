@@ -171,6 +171,18 @@
 						"default": true,
 						"scope": "window",
 						"description": "%configuration.showCommandPickerInStatusBar.description%"
+					},
+					"zotero-cite.showMarkdownCitationHoverPreview": {
+						"type": "boolean",
+						"default": true,
+						"scope": "window",
+						"description": "%configuration.showMarkdownCitationHoverPreview.description%"
+					},
+					"zotero-cite.showMarkdownCitationCompletion": {
+						"type": "boolean",
+						"default": true,
+						"scope": "window",
+						"description": "%configuration.showMarkdownCitationCompletion.description%"
 					}
 				}
 			}

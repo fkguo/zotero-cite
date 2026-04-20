@@ -54,6 +54,9 @@ function registerMarkdownCitationPreview(context) {
 }
 exports.registerMarkdownCitationPreview = registerMarkdownCitationPreview;
 async function provideMarkdownCitationHover(document, position) {
+    if (!(0, config_1.getShowMarkdownCitationHoverPreview)()) {
+        return undefined;
+    }
     const token = getCitationTokenAtPosition(document, position);
     if (!token) {
         return undefined;

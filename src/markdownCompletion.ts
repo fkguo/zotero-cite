@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 
 import { resolveBibPath, validateBibName } from "./bibPath";
-import { getDefaultBibName } from "./config";
+import { getDefaultBibName, getShowMarkdownCitationCompletion } from "./config";
 import { t } from "./i18n";
 import { getMarkdownBibliography } from "./zotero";
 
@@ -87,6 +87,10 @@ async function provideCitationCompletions(
   document: vscode.TextDocument,
   position: vscode.Position
 ): Promise<vscode.CompletionItem[] | undefined> {
+  if (!getShowMarkdownCitationCompletion()) {
+    return undefined;
+  }
+
   const linePrefix = document.lineAt(position.line).text.slice(0, position.character);
 
   const footnoteTrigger = FOOTNOTE_TRIGGER_PATTERN.exec(linePrefix);
@@ -344,7 +348,7 @@ async function getZoteroSummaryCached(citeKey: string): Promise<string | undefin
     try {
       const raw = await getMarkdownBibliography(citeKey);
       const summary = normalizePreviewText(raw);
-      if (!summary) {
+      if (!isMeaningfulSummary(summary, citeKey)) {
         return undefined;
       }
 
@@ -384,6 +388,28 @@ function normalizePreviewText(value: string): string {
   }
 
   return normalized.length > 260 ? `${normalized.slice(0, 260)}...` : normalized;
+}
+
+function isMeaningfulSummary(summary: string, citeKey: string): boolean {
+  const normalizedSummary = String(summary || "").trim();
+  if (!normalizedSummary) {
+    return false;
+  }
+
+  const summaryCompact = normalizedSummary.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const keyCompact = String(citeKey || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+
+  if (!summaryCompact) {
+    return false;
+  }
+
+  if (!keyCompact) {
+    return true;
+  }
+
+  return summaryCompact !== keyCompact;
 }
 
 function isBibDocument(document: vscode.TextDocument): boolean {

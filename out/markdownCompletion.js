@@ -59,6 +59,9 @@ function registerMarkdownCitationCompletion(context) {
 }
 exports.registerMarkdownCitationCompletion = registerMarkdownCitationCompletion;
 async function provideCitationCompletions(document, position) {
+    if (!(0, config_1.getShowMarkdownCitationCompletion)()) {
+        return undefined;
+    }
     const linePrefix = document.lineAt(position.line).text.slice(0, position.character);
     const footnoteTrigger = FOOTNOTE_TRIGGER_PATTERN.exec(linePrefix);
     if (footnoteTrigger) {
@@ -256,7 +259,7 @@ async function getZoteroSummaryCached(citeKey) {
         try {
             const raw = await (0, zotero_1.getMarkdownBibliography)(citeKey);
             const summary = normalizePreviewText(raw);
-            if (!summary) {
+            if (!isMeaningfulSummary(summary, citeKey)) {
                 return undefined;
             }
             zoteroPreviewCache.set(citeKey, {
@@ -291,6 +294,23 @@ function normalizePreviewText(value) {
         return "";
     }
     return normalized.length > 260 ? `${normalized.slice(0, 260)}...` : normalized;
+}
+function isMeaningfulSummary(summary, citeKey) {
+    const normalizedSummary = String(summary || "").trim();
+    if (!normalizedSummary) {
+        return false;
+    }
+    const summaryCompact = normalizedSummary.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const keyCompact = String(citeKey || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "");
+    if (!summaryCompact) {
+        return false;
+    }
+    if (!keyCompact) {
+        return true;
+    }
+    return summaryCompact !== keyCompact;
 }
 function isBibDocument(document) {
     return document.languageId === "bibtex" || document.uri.path.toLowerCase().endsWith(".bib");
