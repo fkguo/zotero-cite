@@ -226,6 +226,10 @@ const messages: Record<string, LocaleMessage> = {
     en: "Local BibTeX",
     zhCN: "本地 BibTeX",
   },
+  "completion.source.zotero": {
+    en: "Zotero (cached)",
+    zhCN: "Zotero（缓存）",
+  },
   "completion.source.document": {
     en: "Existing in document",
     zhCN: "文档中已使用",

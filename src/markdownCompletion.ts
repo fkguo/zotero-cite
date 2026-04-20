@@ -3,6 +3,7 @@ import * as vscode from "vscode";
 import { resolveBibPath, validateBibName } from "./bibPath";
 import { getDefaultBibName } from "./config";
 import { t } from "./i18n";
+import { getMarkdownBibliography } from "./zotero";
 
 const bibtexParse = require("@orcid/bibtex-parse-js") as {
   toJSON: (content: string) => Array<Record<string, unknown>>;
@@ -21,7 +22,7 @@ type FootnoteCandidate = {
 type PandocCandidate = {
   key: string;
   summary: string;
-  source: "localBib" | "document";
+  source: "localBib" | "zotero";
 };
 
 type LocalBibCacheEntry = {
@@ -29,13 +30,21 @@ type LocalBibCacheEntry = {
   entries: Map<string, ParsedBibEntry>;
 };
 
+type ZoteroCacheEntry = {
+  expiresAt: number;
+  value: string;
+};
+
 const FOOTNOTE_TRIGGER_PATTERN = /\[\^([\w-:\d]*)$/;
 const FOOTNOTE_DEFINITION_HEAD_PATTERN = /^\s*\[\^([^\]\r\n]+)\]:\s?(.*)$/;
 const PANDOC_TRIGGER_PATTERN = /@([\w-:\d]*)$/;
 const PANDOC_KEY_PATTERN = /@([\w-:\d]+)/g;
 const LOCAL_BIB_CACHE_TTL_MS = 30_000;
+const ZOTERO_CACHE_TTL_MS = 5 * 60_000;
 
 const localBibCache = new Map<string, LocalBibCacheEntry>();
+const zoteroPreviewCache = new Map<string, ZoteroCacheEntry>();
+const zoteroPendingRequests = new Map<string, Promise<string | undefined>>();
 
 export function registerMarkdownCitationCompletion(context: vscode.ExtensionContext): void {
   const provider = vscode.languages.registerCompletionItemProvider(
@@ -62,6 +71,13 @@ export function registerMarkdownCitationCompletion(context: vscode.ExtensionCont
     vscode.workspace.onDidChangeConfiguration((event) => {
       if (event.affectsConfiguration("zotero-cite.defaultBibName")) {
         localBibCache.clear();
+      }
+
+      if (
+        event.affectsConfiguration("zotero-cite.jsonRpcUrl") ||
+        event.affectsConfiguration("zotero-cite.caywUrl")
+      ) {
+        zoteroPreviewCache.clear();
       }
     })
   );
@@ -133,13 +149,13 @@ async function buildPandocCompletionItems(
   );
 
   return candidates.map((candidate) => {
-    const source = candidate.source === "localBib" ? t("completion.source.localBib") : t("completion.source.document");
+    const source = candidate.source === "localBib" ? t("completion.source.localBib") : t("completion.source.zotero");
     const item = new vscode.CompletionItem(`@${candidate.key}`, vscode.CompletionItemKind.Reference);
     item.insertText = candidate.key;
     item.range = replacementRange;
     item.filterText = candidate.key;
-    item.detail = `${source} · ${candidate.summary || t("completion.noSummary")}`;
-    item.documentation = candidate.summary || t("completion.noSummary");
+    item.detail = `${source} · ${candidate.summary}`;
+    item.documentation = candidate.summary;
     return item;
   });
 }
@@ -169,33 +185,67 @@ function collectFootnoteCandidates(document: vscode.TextDocument, partialKey: st
 }
 
 async function collectPandocCandidates(document: vscode.TextDocument, partialKey: string): Promise<PandocCandidate[]> {
+  const normalizedPartial = partialKey.toLowerCase();
   const byLowerKey = new Map<string, PandocCandidate>();
 
   const localBibEntries = await getLocalBibEntries(document);
   localBibEntries.forEach((entry, key) => {
+    if (!key.toLowerCase().startsWith(normalizedPartial)) {
+      return;
+    }
+
+    const summary = formatLocalBibSummary(entry);
+    if (!summary) {
+      return;
+    }
+
     byLowerKey.set(key.toLowerCase(), {
       key,
-      summary: formatLocalBibSummary(entry, key),
+      summary,
       source: "localBib",
     });
   });
 
+  const missingKeysFromDocument = new Set<string>();
   const text = document.getText();
   PANDOC_KEY_PATTERN.lastIndex = 0;
   let match: RegExpExecArray | null;
   while ((match = PANDOC_KEY_PATTERN.exec(text)) !== null) {
     const key = match[1];
+    if (!key.toLowerCase().startsWith(normalizedPartial)) {
+      continue;
+    }
+
     const lowerKey = key.toLowerCase();
     if (!byLowerKey.has(lowerKey)) {
-      byLowerKey.set(lowerKey, {
-        key,
-        summary: t("completion.summary.existingDocument", { key }),
-        source: "document",
-      });
+      missingKeysFromDocument.add(key);
     }
   }
 
-  return filterAndSortCandidates(Array.from(byLowerKey.values()), partialKey);
+  const zoteroCandidates = await Promise.all(
+    Array.from(missingKeysFromDocument).map(async (key): Promise<PandocCandidate | undefined> => {
+      const summary = await getZoteroSummaryCached(key);
+      if (!summary) {
+        return undefined;
+      }
+
+      return {
+        key,
+        summary,
+        source: "zotero",
+      };
+    })
+  );
+
+  zoteroCandidates.forEach((candidate) => {
+    if (!candidate) {
+      return;
+    }
+
+    byLowerKey.set(candidate.key.toLowerCase(), candidate);
+  });
+
+  return Array.from(byLowerKey.values()).sort((a, b) => a.key.localeCompare(b.key));
 }
 
 function filterAndSortCandidates<T extends { key: string }>(items: T[], partialKey: string): T[] {
@@ -258,7 +308,7 @@ function resolveDocumentBibPath(document: vscode.TextDocument): vscode.Uri | und
   }
 }
 
-function formatLocalBibSummary(entry: ParsedBibEntry, key: string): string {
+function formatLocalBibSummary(entry: ParsedBibEntry): string {
   const tags = (entry.entryTags || {}) as Record<string, unknown>;
   const title = normalizeField(tags.title);
   const author = normalizeField(tags.author);
@@ -275,7 +325,44 @@ function formatLocalBibSummary(entry: ParsedBibEntry, key: string): string {
     parts.push(metadata);
   }
 
-  return parts.join(" | ") || t("completion.summary.localBibFallback", { key });
+  return parts.join(" | ");
+}
+
+async function getZoteroSummaryCached(citeKey: string): Promise<string | undefined> {
+  const now = Date.now();
+  const cached = zoteroPreviewCache.get(citeKey);
+  if (cached && cached.expiresAt > now) {
+    return cached.value;
+  }
+
+  const pending = zoteroPendingRequests.get(citeKey);
+  if (pending) {
+    return pending;
+  }
+
+  const request = (async (): Promise<string | undefined> => {
+    try {
+      const raw = await getMarkdownBibliography(citeKey);
+      const summary = normalizePreviewText(raw);
+      if (!summary) {
+        return undefined;
+      }
+
+      zoteroPreviewCache.set(citeKey, {
+        expiresAt: Date.now() + ZOTERO_CACHE_TTL_MS,
+        value: summary,
+      });
+
+      return summary;
+    } catch (_error) {
+      return undefined;
+    } finally {
+      zoteroPendingRequests.delete(citeKey);
+    }
+  })();
+
+  zoteroPendingRequests.set(citeKey, request);
+  return request;
 }
 
 function normalizeField(value: unknown): string {
@@ -283,6 +370,20 @@ function normalizeField(value: unknown): string {
     .replace(/[{}]/g, "")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function normalizePreviewText(value: string): string {
+  const normalized = String(value || "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/[{}]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!normalized) {
+    return "";
+  }
+
+  return normalized.length > 260 ? `${normalized.slice(0, 260)}...` : normalized;
 }
 
 function isBibDocument(document: vscode.TextDocument): boolean {
