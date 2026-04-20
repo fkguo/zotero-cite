@@ -46,6 +46,14 @@ const messages: Record<string, LocaleMessage> = {
     en: "No item is selected.",
     zhCN: "未选择条目。",
   },
+  "error.noRunnableCommandForLanguage": {
+    en: "No runnable Zotero command for current language: {lang}",
+    zhCN: "当前语言 {lang} 下没有可运行的 Zotero 命令。",
+  },
+  "error.zoteroEndpointUnavailable": {
+    en: "Cannot access Zotero endpoint {endpoint} at {url}. Please ensure Zotero is running and Better BibTeX is enabled, then verify setting '{settingKey}'. Details: {message}",
+    zhCN: "无法访问 Zotero 接口 {endpoint}（{url}）。请确认 Zotero 已启动且 Better BibTeX 已启用，然后检查设置项“{settingKey}”。详情：{message}",
+  },
   "error.saveCurrentTab": {
     en: "Please save current tab.",
     zhCN: "请先保存当前标签页。",
@@ -129,6 +137,46 @@ const messages: Record<string, LocaleMessage> = {
   "error.unsupportedLanguage": {
     en: "Unsupported language: {lang}",
     zhCN: "不支持的语言类型：{lang}",
+  },
+  "quickPick.taskPickerTitle": {
+    en: "Zotero Project Tasks",
+    zhCN: "Zotero 项目任务",
+  },
+  "quickPick.taskPickerPlaceholder": {
+    en: "Select a Zotero command to run",
+    zhCN: "请选择要执行的 Zotero 命令",
+  },
+  "quickPick.availableFor": {
+    en: "Available for: {langs}",
+    zhCN: "可用于：{langs}",
+  },
+  "quickPick.command.citeSmart": {
+    en: "Cite + Bibliography (Smart)",
+    zhCN: "智能引用并更新文献",
+  },
+  "quickPick.command.exportBibLatex": {
+    en: "Export BibLaTeX",
+    zhCN: "导出 BibLaTeX",
+  },
+  "quickPick.command.addCitation": {
+    en: "Add Citation for Pandoc/LaTeX",
+    zhCN: "为 Pandoc/LaTeX 添加引用",
+  },
+  "quickPick.command.citeBibliography": {
+    en: "Cite and Create Bibliography for Pandoc/LaTeX",
+    zhCN: "为 Pandoc/LaTeX 添加引用并更新文献",
+  },
+  "quickPick.command.citeMarkdownBibliography": {
+    en: "Cite and Create Bibliography for Markdown",
+    zhCN: "为 Markdown 添加引用并更新文献",
+  },
+  "quickPick.command.addHyperLinkCitation": {
+    en: "Cite Hyperlink",
+    zhCN: "超链接引用",
+  },
+  "quickPick.command.updateBibtexFromZotero": {
+    en: "Update BibTeX Entries",
+    zhCN: "更新 BibTeX 条目",
   },
   "activate.message": {
     en: "Your extension \"zotero-cite\" is now active.",

@@ -15,7 +15,8 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onCommand:zotero-cite.citeSmart"
+		"onCommand:zotero-cite.citeSmart",
+		"onCommand:zotero-cite.showTaskPicker"
 	],
 	"extensionKind": [
 		"ui",
@@ -24,6 +25,10 @@
 	"main": "./out/extension.js",
 	"contributes": {
 		"commands": [
+			{
+				"command": "zotero-cite.showTaskPicker",
+				"title": "%command.showTaskPicker.title%"
+			},
 			{
 				"command": "zotero-cite.citeSmart",
 				"title": "%command.citeSmart.title%",
@@ -60,12 +65,21 @@
 		"menus": {
 			"editor/title": [
 				{
+					"command": "zotero-cite.showTaskPicker",
+					"when": "editorTextFocus",
+					"group": "navigation@9"
+				},
+				{
 					"command": "zotero-cite.citeSmart",
 					"when": "editorLangId == 'latex' || editorLangId == 'markdown'",
 					"group": "navigation@10"
 				}
 			],
 			"commandPalette": [
+				{
+					"command": "zotero-cite.showTaskPicker",
+					"when": "editorTextFocus"
+				},
 				{
 					"command": "zotero-cite.exportBibLatex",
 					"when": "editorLangId == 'latex' || editorLangId == 'markdown'"

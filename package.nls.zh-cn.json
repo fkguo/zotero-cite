@@ -1,6 +1,7 @@
 {
   "displayName": "Zotero 引用助手",
   "description": "通过 Zotero JSON-RPC 完成引用与参考文献管理",
+  "command.showTaskPicker.title": "Zotero Cite：项目任务",
   "command.citeSmart.title": "Zotero Cite：引用并更新文献",
   "command.exportBibLatex.title": "Zotero Cite：导出 BibLaTeX",
   "command.addCitation.title": "Zotero Cite：为 Pandoc/LaTeX 添加引用",
