@@ -1,0 +1,19 @@
+{
+  "displayName": "Zotero 引用助手",
+  "description": "通过 Zotero JSON-RPC 完成引用与参考文献管理",
+  "command.citeSmart.title": "Zotero Cite：引用并更新文献",
+  "command.exportBibLatex.title": "Zotero Cite：导出 BibLaTeX",
+  "command.addCitation.title": "Zotero Cite：为 Pandoc/LaTeX 添加引用",
+  "command.citeBibliography.title": "Zotero Cite：为 Pandoc/LaTeX 添加引用并更新文献",
+  "command.citeMarkdownBibliography.title": "Zotero Cite：为 Markdown 添加引用并更新文献",
+  "command.addHyperLinkCitation.title": "Zotero Cite：超链接引用",
+  "command.updateBibtexFromZotero.title": "Zotero Cite：更新 BibTeX 条目",
+  "configuration.title": "Zotero Cite",
+  "configuration.bibliograpyStyle.description": "参考文献样式 URL，详见：https://www.zotero.org/styles",
+  "configuration.defaultBibName.description": "默认 BibTeX 文件名。支持占位符：${workspaceFolder}、${fileBasename}、${fileBasenameNoExtension}、${fileDirname}、${fileExtname}",
+  "configuration.latexBibStyle.description": "LaTeX 文献样式：bibtex 或 biblatex",
+  "configuration.minimizeZotero.description": "填写任意非空值后，插入引用时将最小化 Zotero 窗口",
+  "configuration.jsonRpcUrl.description": "Better BibTeX JSON-RPC 接口地址",
+  "configuration.caywUrl.description": "Better BibTeX CAYW 接口地址",
+  "configuration.statusMessageDuration.description": "状态栏消息显示时长（毫秒）"
+}

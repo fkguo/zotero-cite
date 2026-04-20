@@ -1,11 +1,11 @@
 {
 	"name": "zotero-cite",
 	"publisher": "XING",
-	"displayName": "Zotero Cite",
+	"displayName": "%displayName%",
 	"repository": {
 		"url": "https://gitee.com/rusterx/zotero-cite"
 	},
-	"description": "Cite and manage bibliography from zotero via json rpc",
+	"description": "%description%",
 	"version": "0.9.4",
 	"engines": {
 		"vscode": "^1.61.0"
@@ -21,12 +21,12 @@
 		"ui",
 		"workspace"
 	],
-	"main": "./extension.js",
+	"main": "./out/extension.js",
 	"contributes": {
 		"commands": [
 			{
 				"command": "zotero-cite.citeSmart",
-				"title": "Zotero Cite: Cite + Bibliography",
+				"title": "%command.citeSmart.title%",
 				"icon": {
 					"light": "images/cite-light.svg",
 					"dark": "images/cite-dark.svg"
@@ -34,27 +34,27 @@
 			},
 			{
 				"command": "zotero-cite.exportBibLatex",
-				"title": "Zotero Cite: Export BibLatex"
+				"title": "%command.exportBibLatex.title%"
 			},
 			{
 				"command": "zotero-cite.addCitation",
-				"title": "Zotero Cite: Add Citation for Pandoc/Latex"
+				"title": "%command.addCitation.title%"
 			},
 			{
 				"command": "zotero-cite.citeBibliography",
-				"title": "Zotero Cite: Cite and Create Bibliography for Pandoc/LaTeX "
+				"title": "%command.citeBibliography.title%"
 			},
 			{
 				"command": "zotero-cite.citeMarkdownBibliography",
-				"title": "Zotero Cite: Cite and Create Bibliography for Markdown"
+				"title": "%command.citeMarkdownBibliography.title%"
 			},
 			{
 				"command": "zotero-cite.addHyperLinkCitation",
-				"title": "Zotero Cite: Cite Hyperlink"
+				"title": "%command.addHyperLinkCitation.title%"
 			},
 			{
 				"command": "zotero-cite.updateBibtexFromZotero",
-				"title": "Zotero Cite: Update BibTex Entries"
+				"title": "%command.updateBibtexFromZotero.title%"
 			}
 		],
 		"menus": {
@@ -95,41 +95,63 @@
 		"configuration": [
 			{
 				"type": "object",
-				"title": "Zotero Cite",
+				"title": "%configuration.title%",
 				"properties": {
 					"zotero-cite.bibliograpyStyle": {
 						"type": "string",
 						"default": "http://www.zotero.org/styles/apa",
-						"description": "URL of bibliography style, see: https://www.zotero.org/styles",
+						"description": "%configuration.bibliograpyStyle.description%",
 						"scope": "window"
 					},
 					"zotero-cite.defaultBibName": {
 						"type": "string",
 						"default": "ref.bib",
 						"scope": "window",
-						"description": "Default bib file name"
+						"description": "%configuration.defaultBibName.description%"
 					},
 					"zotero-cite.latexBibStyle": {
 						"type": "string",
 						"default": "bibtex",
 						"scope": "window",
-						"description": "LaTeX bibliography style, bibtex or biblatex"
+						"description": "%configuration.latexBibStyle.description%"
 					},
 					"zotero-cite.minimizeZotero": {
 						"type": "string",
 						"default": "",
 						"scope": "window",
-						"description": "Any non-empty value will minimize the Zotero window after citation"
+						"description": "%configuration.minimizeZotero.description%"
+					},
+					"zotero-cite.jsonRpcUrl": {
+						"type": "string",
+						"default": "http://localhost:23119/better-bibtex/json-rpc",
+						"scope": "window",
+						"description": "%configuration.jsonRpcUrl.description%"
+					},
+					"zotero-cite.caywUrl": {
+						"type": "string",
+						"default": "http://localhost:23119/better-bibtex/cayw",
+						"scope": "window",
+						"description": "%configuration.caywUrl.description%"
+					},
+					"zotero-cite.statusMessageDuration": {
+						"type": "number",
+						"default": 1500,
+						"minimum": 300,
+						"scope": "window",
+						"description": "%configuration.statusMessageDuration.description%"
 					}
 				}
 			}
 		]
 	},
 	"scripts": {
+		"compile": "tsc -p ./",
+		"watch": "tsc -watch -p ./",
+		"vscode:prepublish": "npm run compile",
 		"lint": "eslint .",
 		"sync:prs": "node ./scripts/sync-remote-prs.js",
 		"sync:prs:dry": "node ./scripts/sync-remote-prs.js --dry-run",
-		"pretest": "npm run lint",
+		"pretest": "npm run compile && npm run lint",
 		"test": "node ./test/runTest.js"
 	},
 	"devDependencies": {

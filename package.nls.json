@@ -1,0 +1,19 @@
+{
+  "displayName": "Zotero Cite",
+  "description": "Cite and manage bibliography from Zotero via JSON-RPC",
+  "command.citeSmart.title": "Zotero Cite: Cite + Bibliography",
+  "command.exportBibLatex.title": "Zotero Cite: Export BibLaTeX",
+  "command.addCitation.title": "Zotero Cite: Add Citation for Pandoc/LaTeX",
+  "command.citeBibliography.title": "Zotero Cite: Cite and Create Bibliography for Pandoc/LaTeX",
+  "command.citeMarkdownBibliography.title": "Zotero Cite: Cite and Create Bibliography for Markdown",
+  "command.addHyperLinkCitation.title": "Zotero Cite: Cite Hyperlink",
+  "command.updateBibtexFromZotero.title": "Zotero Cite: Update BibTeX Entries",
+  "configuration.title": "Zotero Cite",
+  "configuration.bibliograpyStyle.description": "URL of bibliography style, see: https://www.zotero.org/styles",
+  "configuration.defaultBibName.description": "Default BibTeX file name. Supports placeholders like ${workspaceFolder}, ${fileBasename}, ${fileBasenameNoExtension}, ${fileDirname}, ${fileExtname}",
+  "configuration.latexBibStyle.description": "LaTeX bibliography style: bibtex or biblatex",
+  "configuration.minimizeZotero.description": "Any non-empty value minimizes the Zotero window after citation",
+  "configuration.jsonRpcUrl.description": "Better BibTeX JSON-RPC endpoint URL",
+  "configuration.caywUrl.description": "Better BibTeX CAYW endpoint URL",
+  "configuration.statusMessageDuration.description": "Status bar message duration in milliseconds"
+}
