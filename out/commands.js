@@ -108,8 +108,21 @@ async function exportBibLatex() {
 }
 async function insertMarkdownBibliography(citeKey, editor) {
     const bibliography = await (0, zotero_1.getMarkdownBibliography)(citeKey);
-    const bibliographyText = "[^" + citeKey + "]: " + bibliography;
-    await (0, editor_1.insertTextAsync)(bibliographyText, -2, editor);
+    await appendMarkdownFootnoteDefinition(citeKey, bibliography, editor);
+}
+function getDocumentEol(editor) {
+    return editor.document.eol === vscode.EndOfLine.CRLF ? "\r\n" : "\n";
+}
+function normalizeLineEndings(text, eol) {
+    return text.replace(/\r\n|\r|\n/g, eol);
+}
+async function appendMarkdownFootnoteDefinition(citeKey, content, editor) {
+    const documentText = editor.document.getText();
+    const eol = getDocumentEol(editor);
+    const normalizedContent = normalizeLineEndings(String(content || "").trim(), eol);
+    const needsLeadingEol = documentText.length > 0 && !/\r?\n$/.test(documentText);
+    const textToInsert = `${needsLeadingEol ? eol : ""}[^${citeKey}]: ${normalizedContent}${eol}`;
+    await (0, editor_1.insertTextAsync)(textToInsert, documentText.length, editor);
 }
 async function citeMarkdownBibliography() {
     try {
@@ -215,10 +228,9 @@ async function addHyperLinkCitation() {
         }
         const key = (0, editor_1.makeId)(8);
         const keyContent = `[^${key}]`;
-        const appContent = `\n[^${key}]: <${clipboardContent}>`;
         if (editor.document.languageId === "markdown") {
             await (0, editor_1.insertTextAsync)(keyContent, -1, editor);
-            await (0, editor_1.insertTextAsync)(appContent, -2, editor);
+            await appendMarkdownFootnoteDefinition(key, `<${clipboardContent}>`, editor);
         }
     }
     catch (error) {

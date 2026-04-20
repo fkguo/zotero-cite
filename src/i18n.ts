@@ -186,6 +186,38 @@ const messages: Record<string, LocaleMessage> = {
     en: "Open Zotero command picker",
     zhCN: "打开 Zotero 命令选择器",
   },
+  "hover.footnote.title": {
+    en: "Footnote [^{key}]",
+    zhCN: "脚注 [^{key}]",
+  },
+  "hover.pandoc.title": {
+    en: "Pandoc citation @{key}",
+    zhCN: "Pandoc 引用 @{key}",
+  },
+  "hover.sourceLabel": {
+    en: "Source: {source}",
+    zhCN: "来源：{source}",
+  },
+  "hover.source.localBib": {
+    en: "local BibTeX",
+    zhCN: "本地 BibTeX",
+  },
+  "hover.source.zotero": {
+    en: "Zotero (cached)",
+    zhCN: "Zotero（缓存）",
+  },
+  "hover.notFound.footnote": {
+    en: "No footnote definition found for key {key}.",
+    zhCN: "未找到键 {key} 对应的脚注定义。",
+  },
+  "hover.notFound.pandoc": {
+    en: "No citation preview found for key {key} in local BibTeX or Zotero.",
+    zhCN: "在本地 BibTeX 与 Zotero 中都未找到键 {key} 的引用预览。",
+  },
+  "hover.localBib.fallback": {
+    en: "Found local BibTeX entry for key {key}.",
+    zhCN: "已找到键 {key} 的本地 BibTeX 条目。",
+  },
   "activate.message": {
     en: "Your extension \"zotero-cite\" is now active.",
     zhCN: "扩展 \"zotero-cite\" 已激活。",

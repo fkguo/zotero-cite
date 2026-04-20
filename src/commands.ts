@@ -113,8 +113,30 @@ async function exportBibLatex(): Promise<void> {
 
 async function insertMarkdownBibliography(citeKey: string, editor: vscode.TextEditor): Promise<void> {
   const bibliography = await getMarkdownBibliography(citeKey);
-  const bibliographyText = "[^" + citeKey + "]: " + bibliography;
-  await insertTextAsync(bibliographyText, -2, editor);
+  await appendMarkdownFootnoteDefinition(citeKey, bibliography, editor);
+}
+
+function getDocumentEol(editor: vscode.TextEditor): string {
+  return editor.document.eol === vscode.EndOfLine.CRLF ? "\r\n" : "\n";
+}
+
+function normalizeLineEndings(text: string, eol: string): string {
+  return text.replace(/\r\n|\r|\n/g, eol);
+}
+
+async function appendMarkdownFootnoteDefinition(
+  citeKey: string,
+  content: string,
+  editor: vscode.TextEditor
+): Promise<void> {
+  const documentText = editor.document.getText();
+  const eol = getDocumentEol(editor);
+  const normalizedContent = normalizeLineEndings(String(content || "").trim(), eol);
+
+  const needsLeadingEol = documentText.length > 0 && !/\r?\n$/.test(documentText);
+  const textToInsert = `${needsLeadingEol ? eol : ""}[^${citeKey}]: ${normalizedContent}${eol}`;
+
+  await insertTextAsync(textToInsert, documentText.length, editor);
 }
 
 async function citeMarkdownBibliography(): Promise<void> {
@@ -239,11 +261,10 @@ async function addHyperLinkCitation(): Promise<void> {
 
     const key = makeId(8);
     const keyContent = `[^${key}]`;
-    const appContent = `\n[^${key}]: <${clipboardContent}>`;
 
     if (editor.document.languageId === "markdown") {
       await insertTextAsync(keyContent, -1, editor);
-      await insertTextAsync(appContent, -2, editor);
+      await appendMarkdownFootnoteDefinition(key, `<${clipboardContent}>`, editor);
     }
   } catch (error) {
     showErrorMessage(errorToMessage(error));
