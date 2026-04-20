@@ -127,6 +127,8 @@
 	},
 	"scripts": {
 		"lint": "eslint .",
+		"sync:prs": "node ./scripts/sync-remote-prs.js",
+		"sync:prs:dry": "node ./scripts/sync-remote-prs.js --dry-run",
 		"pretest": "npm run lint",
 		"test": "node ./test/runTest.js"
 	},

@@ -1,5 +1,31 @@
 在markdown、pandoc（.md后缀）以及latex文件的编写过程中，如果想要实现类似ms word文件的编辑过程，边插入边更新bib文件。或者想将当前文件的`key`列表，导出最终的bib文件，那么该插件就非常适合你。
 
+## 自动融合远程 Pull Requests
+
+项目里新增了一个自动合并脚本，可按顺序抓取并合并远程 PR 引用到当前分支。
+
+前提条件：
+- 当前目录是 git 仓库。
+- 远程仓库暴露 PR 引用（默认使用 `refs/pull/*/head`，GitHub/Gitee 常见）。
+- 建议在工作区干净（无未提交变更）时运行。
+
+常用命令：
+
+```bash
+# 仅预览将要合并的 PR，不执行 merge
+npm run sync:prs:dry
+
+# 实际执行自动合并
+npm run sync:prs
+
+# 指定远程并限制最多合并 5 个 PR
+npm run sync:prs -- --remote upstream --limit 5
+```
+
+冲突处理：
+- 当某个 PR 合并冲突时，脚本会尝试执行 `git merge --abort` 保持工作区整洁。
+- 默认遇到冲突即停止；如需继续处理后续 PR，可加 `--keep-going`。
+
 
 
 ## issue与代码提交
