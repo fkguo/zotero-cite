@@ -301,19 +301,17 @@ function insertMarkdownBibliography(citeKey) {
  * @param {string} bibPath bib文件的路径
  * @returns string[]
  */
-function getBibliographyKeyFromFile(bibPath) {
+async function getBibliographyKeyFromFile(bibPath) {
   try {
-    // Try to read the file, if it doesn't exist it will throw an error
-    const fileData = vscode.workspace.fs.readFile(bibPath);
-    var content = Buffer.from(fileData).toString('utf8');
+    // Try to read the file; vscode.workspace.fs.readFile returns a Uint8Array
+    const fileBytes = await vscode.workspace.fs.readFile(bibPath);
+    const content = Buffer.from(fileBytes).toString('utf8');
+    var jsonBibs = bibtexParse.toJSON(content);
+    return jsonBibs.map((jb) => jb["citationKey"]);
   } catch (error) {
     // File doesn't exist or cannot be read
-    return new Array();
+    return [];
   }
-
-  var jsonBibs = bibtexParse.toJSON(content);
-
-  return jsonBibs.map((jb) => jb["citationKey"]);
 }
 
 
@@ -415,7 +413,7 @@ async function citeBibliography() {
     insertCiteKeys(citeKeys);
 
     // 根据bib文件，而不是cite去获取keys。
-    var bibKeys = getBibliographyKeyFromFile(bibPath);
+    var bibKeys = await getBibliographyKeyFromFile(bibPath);
 
     // 过滤已经包含的引用
     var uniqueKeys = citeKeys.filter((v, i) => !bibKeys.includes(v));
@@ -619,9 +617,10 @@ async function getBibliography(keys) {
             groupItems[groupName] = [itemKey];
           }
         } catch (err) {
-          outputChannel.appendLine(err.message);
-          if (err?.message && !err?.message?.includes("is not found")) {
-            allErrors.push(err.message);
+          const msg = err && err.message ? err.message : String(err);
+          outputChannel.appendLine(msg);
+          if (msg && !msg.includes("is not found")) {
+            allErrors.push(msg);
           }
         }
 
@@ -817,7 +816,9 @@ async function getBibtexFromZotero(citekey) {
 function getBibPath() {
   const bibName = defaultBibName();
   const editor = vscode.window.activeTextEditor;
-  var currentlyOpenTabfilePath = editor.document.uri.fsPath;
+  var currentlyOpenTabfileUri = editor.document.uri;
+  var currentlyOpenTabfilePath = currentlyOpenTabfileUri.fsPath;
+
   if (bibName.length < 5 || path.extname(bibName) != ".bib") {
     throw new Error("bibName is invalid or its length is less than 5.");
   }
@@ -862,7 +863,7 @@ function getBibPath() {
     bibPath.authority = currentlyOpenTabfileUri.authority;
   } else {
     bibPath = vscode.Uri.joinPath(
-      editor.document.uri,
+      currentlyOpenTabfileUri,
       "..",
       bibName_replaced
     );
@@ -874,35 +875,25 @@ async function updateBibEntries() {
   // 得到bib文件的默认文件名
   const bibPath = getBibPath();
   try {
-    const data = vscode.workspace.fs.readFile(bibPath, "utf8");
-    // 使用 bibtex-parse-js 解析现有的 bibtex 数据
+    const fileBytes = await vscode.workspace.fs.readFile(bibPath);
+    const data = Buffer.from(fileBytes).toString('utf8');
     const parsedData = bibtexParse.toJSON(data);
     const length = parsedData.length;
     var processedCount = 0;
     console.log("Parsed %d Bib entries.", parsedData.length);
+    // collect missing keys to avoid flooding the UI with many transient notifications
+    var missingKeys = [];
+    outputChannel.appendLine("--- Zotero Cite: updateBibEntries log ---");
     // 查找并替换相应的 citekey 条目
     let updated = false;
     for (const [index, entry] of parsedData.entries()) {
       var result = await getBibtexFromZotero(entry.citationKey);
       if (result === null) {
         console.log("Not found entry %s", index, entry.citationKey);
+        // record and log to output channel instead of showing many notifications
+        missingKeys.push(entry.citationKey);
+        outputChannel.appendLine(`Not found bib entry ${entry.citationKey} in Zotero.`);
         parsedData[index] = bibtexParse.toBibtex([entry], false);
-        vscode.window
-          .showInformationMessage(
-            "Not found bib entry " +
-            entry.citationKey +
-            " in Zotero, please check the spell.",
-            "复制 citation key",
-            "关闭"
-          )
-          .then((selection) => {
-            if (selection == "复制") {
-              vscode.env.clipboard.writeText(entry.citationKey);
-              vscode.window.showInformationMessage(
-                "Citation Key: " + entry.citationKey + " 已复制到剪贴板!"
-              );
-            }
-          });
         continue;
       }
       processedCount += 1;
@@ -918,6 +909,22 @@ async function updateBibEntries() {
         updatedBibtexData += entry + "\n";
       });
       vscode.workspace.fs.writeFile(bibPath, Buffer.from(updatedBibtexData, "utf8"));
+    }
+    // if there are missing keys, show a single summary notification and expose details in Output
+    if (missingKeys.length > 0) {
+      outputChannel.show(true);
+      vscode.window.showInformationMessage(
+        `${missingKeys.length} bib entries not found in Zotero.`,
+        'Show list',
+        'Copy list'
+      ).then((selection) => {
+        if (selection === 'Show list') {
+          outputChannel.show(true);
+        } else if (selection === 'Copy list') {
+          vscode.env.clipboard.writeText(missingKeys.join('\n'));
+          vscode.window.showInformationMessage('Missing keys copied to clipboard.');
+        }
+      });
     }
     vscode.window.showInformationMessage(
       processedCount + " of " + length + " bib entries successfully updated."

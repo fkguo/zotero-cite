@@ -63,6 +63,7 @@
 - 2024-06-13: 由于<https://gitee.com/cesaryuan>用户贡献，在使用`exportBibLatex`的时候，插件支持`\citet`和`\citep`命令。
 - 2024-07-09: 由于<https://gitee.com/aasll>用户的贡献，插件支持自定义ref文件的位置，并支持使用自定义通配符。
 - 2026-02-02: 由于<https://gitee.com/aasll>用户的贡献，在md和tex文件右上角添加了小按钮来插入引用。
+- 2026-02-04: 由于<https://gitee.com/aasll>用户贡献，修复了添加引用无法检测已经添加进来的重复条目的问题，修复了'update biblatex entries'功能，并增强了返回结果的体验。
 
 ## 教学视频
 
