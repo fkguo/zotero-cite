@@ -112,6 +112,13 @@ function createFootnoteHover(document: vscode.TextDocument, token: CitationToken
 async function createPandocHover(document: vscode.TextDocument, token: CitationToken): Promise<vscode.Hover> {
   const markdown = new vscode.MarkdownString();
 
+  // supportHtml was added in VS Code 1.83 (the extension engine floor is 1.61).
+  // Enable HTML rendering at runtime when available so we can use <img width>
+  // to constrain figure previews in the hover tooltip.
+  if (typeof (markdown as any).supportHtml !== "undefined") {
+    (markdown as any).supportHtml = true;
+  }
+
   if (isPandocCrossRef(token.key)) {
     return createCrossRefHover(document, token, markdown);
   }
@@ -163,13 +170,25 @@ function createCrossRefHover(
 
   markdown.appendMarkdown(`**${t("hover.crossRef.title", { type: crossRefType, key: token.key })}**\n\n`);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (markdown as any).isTrusted = true;
-
   if (isFigure) {
     const figureInfo = findFigureImage(document, token.key);
     if (figureInfo) {
-      renderFigureHover(markdown, figureInfo);
+      // Use HTML <img> with explicit width when supportHtml is available
+      // (VS Code ≥ 1.83).  VS Code MarkdownString does not support <style>/CSS
+      // in hover tooltips (sanitization strips them); the only way to constrain
+      // image size is the width attribute.  Falls back to ![]() for older VS Code.
+      const imgSrc = vscode.Uri.file(figureInfo.imagePath).toString();
+      if ((markdown as any).supportHtml) {
+        markdown.appendMarkdown(`<img src="${imgSrc}" width="100%" alt="${figureInfo.caption || "figure"}" />\n\n`);
+      } else {
+        markdown.appendMarkdown(`![${figureInfo.caption || "figure"}](${imgSrc})\n\n`);
+      }
+      if (figureInfo.caption) {
+        markdown.appendMarkdown(`_${figureInfo.caption}_\n\n`);
+      }
+      if (figureInfo.context) {
+        markdown.appendMarkdown(`\`\`\`markdown\n${figureInfo.context}\n\`\`\``);
+      }
       return new vscode.Hover(markdown, token.range);
     }
   }
@@ -199,25 +218,6 @@ function createCrossRefHover(
   }
 
   return new vscode.Hover(markdown, token.range);
-}
-
-/**
- * Render a figure preview using markdown image syntax.
- * VS Code MarkdownString natively renders ![alt](file://...) but blocks
- * <img src="file://..."> in HTML for security reasons.
- * VS Code hovers also auto-constrain large images so no explicit CSS is needed.
- */
-function renderFigureHover(markdown: vscode.MarkdownString, info: FigureInfo): void {
-  // Use vscode.Uri.file → toString() yields file:///C:/... on Windows,
-  // file:///home/... on Linux — VS Code accepts both in markdown ![]()
-  const imgSrc = vscode.Uri.file(info.imagePath).toString();
-  markdown.appendMarkdown(`![${info.caption || "figure"}](${imgSrc})\n\n`);
-  if (info.caption) {
-    markdown.appendMarkdown(`_${info.caption}_\n\n`);
-  }
-  if (info.context) {
-    markdown.appendMarkdown(`\`\`\`markdown\n${info.context}\n\`\`\``);
-  }
 }
 
 type FigureInfo = {
