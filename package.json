@@ -6,7 +6,7 @@
 		"url": "https://gitee.com/rusterx/zotero-cite"
 	},
 	"description": "%description%",
-	"version": "0.9.10",
+	"version": "0.9.11",
 	"engines": {
 		"vscode": "^1.61.0"
 	},
