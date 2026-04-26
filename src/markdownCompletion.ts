@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 
-import { isMarkdownLikeDocument } from "./editor";
+import { isMarkdownLikeDocument, isPandocCrossRef } from "./editor";
 import { resolveBibPath, validateBibName } from "./bibPath";
 import { getDefaultBibName, getShowMarkdownCitationCompletion } from "./config";
 import { t } from "./i18n";
@@ -222,6 +222,10 @@ async function collectPandocCandidates(document: vscode.TextDocument, partialKey
   while ((match = PANDOC_KEY_PATTERN.exec(text)) !== null) {
     const key = match[1];
     if (!key.toLowerCase().startsWith(normalizedPartial)) {
+      continue;
+    }
+
+    if (isPandocCrossRef(key)) {
       continue;
     }
 

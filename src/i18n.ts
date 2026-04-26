@@ -86,6 +86,10 @@ const messages: Record<string, LocaleMessage> = {
     en: "Bibliography exported, but some errors occurred. Check the output panel.",
     zhCN: "参考文献已导出，但存在部分错误，请查看输出面板。",
   },
+  "error.fetchGroupBibliographyFailed": {
+    en: "Failed to fetch bibliography for group '{groupName}': {message}",
+    zhCN: "获取分组 '{groupName}' 的参考文献失败：{message}",
+  },
   "status.exportBibliographySuccess": {
     en: "Bibliography exported successfully.",
     zhCN: "参考文献导出成功。",
@@ -213,6 +217,30 @@ const messages: Record<string, LocaleMessage> = {
   "hover.notFound.pandoc": {
     en: "No citation preview found for key {key} in local BibTeX or Zotero.",
     zhCN: "在本地 BibTeX 与 Zotero 中都未找到键 {key} 的引用预览。",
+  },
+  "hover.notFound.crossRef": {
+    en: "No element with label {key} found in the document.",
+    zhCN: "在文档中未找到标签 {key} 对应的元素。",
+  },
+  "hover.crossRef.title": {
+    en: "Pandoc cross-reference @{key} ({type})",
+    zhCN: "Pandoc 交叉引用 @{key}（{type}）",
+  },
+  "hover.crossRef.figure": {
+    en: "Figure",
+    zhCN: "图",
+  },
+  "hover.crossRef.table": {
+    en: "Table",
+    zhCN: "表",
+  },
+  "hover.crossRef.equation": {
+    en: "Equation",
+    zhCN: "公式",
+  },
+  "hover.crossRef.unknown": {
+    en: "Cross-reference",
+    zhCN: "交叉引用",
   },
   "hover.localBib.fallback": {
     en: "Found local BibTeX entry for key {key}.",

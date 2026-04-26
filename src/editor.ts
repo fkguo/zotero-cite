@@ -164,6 +164,13 @@ function getMatchList(pattern: RegExp, text: string): RegExpExecArray[] {
   return matchList;
 }
 
+const PANDOC_CROSSREF_PREFIXES = ["fig:", "tbl:", "eqn:"];
+
+export function isPandocCrossRef(key: string): boolean {
+  const lowerKey = key.toLowerCase();
+  return PANDOC_CROSSREF_PREFIXES.some((prefix) => lowerKey.startsWith(prefix));
+}
+
 function getCiteKeyList(keyMatchList: RegExpExecArray[]): string[] {
   const citeKeyList: string[] = [];
   keyMatchList.forEach((value) => {
@@ -171,7 +178,10 @@ function getCiteKeyList(keyMatchList: RegExpExecArray[]): string[] {
     const keyPattern = /[\w-:\d]+/g;
     const keyMatches = getMatchList(keyPattern, cleaned);
     keyMatches.forEach((keyMatch) => {
-      citeKeyList.push(keyMatch[0]);
+      const key = keyMatch[0];
+      if (!isPandocCrossRef(key)) {
+        citeKeyList.push(key);
+      }
     });
   });
 

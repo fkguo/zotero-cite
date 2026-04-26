@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 
-import { isMarkdownLikeDocument } from "./editor";
+import { isMarkdownLikeDocument, isPandocCrossRef } from "./editor";
 import { resolveBibPath, validateBibName } from "./bibPath";
 import { getDefaultBibName, getShowMarkdownCitationHoverPreview } from "./config";
 import { t } from "./i18n";
@@ -110,6 +110,11 @@ function createFootnoteHover(document: vscode.TextDocument, token: CitationToken
 
 async function createPandocHover(document: vscode.TextDocument, token: CitationToken): Promise<vscode.Hover> {
   const markdown = new vscode.MarkdownString();
+
+  if (isPandocCrossRef(token.key)) {
+    return createCrossRefHover(document, token, markdown);
+  }
+
   markdown.appendMarkdown(`**${t("hover.pandoc.title", { key: token.key })}**\n\n`);
 
   const localBibPreview = await getLocalBibPreview(document, token.key);
@@ -128,6 +133,76 @@ async function createPandocHover(document: vscode.TextDocument, token: CitationT
 
   markdown.appendMarkdown(t("hover.notFound.pandoc", { key: token.key }));
   return new vscode.Hover(markdown, token.range);
+}
+
+function createCrossRefHover(
+  document: vscode.TextDocument,
+  token: CitationToken,
+  markdown: vscode.MarkdownString
+): vscode.Hover {
+  const lowerKey = token.key.toLowerCase();
+  let crossRefType: string;
+  if (lowerKey.startsWith("fig:")) {
+    crossRefType = t("hover.crossRef.figure");
+  } else if (lowerKey.startsWith("tbl:")) {
+    crossRefType = t("hover.crossRef.table");
+  } else if (lowerKey.startsWith("eqn:")) {
+    crossRefType = t("hover.crossRef.equation");
+  } else {
+    crossRefType = t("hover.crossRef.unknown");
+  }
+
+  markdown.appendMarkdown(`**${t("hover.crossRef.title", { type: crossRefType, key: token.key })}**\n\n`);
+
+  const context = findCrossRefContext(document, token.key);
+  if (context) {
+    markdown.appendMarkdown(context);
+  } else {
+    markdown.appendMarkdown(t("hover.notFound.crossRef", { key: token.key }));
+  }
+
+  return new vscode.Hover(markdown, token.range);
+}
+
+function findCrossRefContext(document: vscode.TextDocument, key: string): string | undefined {
+  const text = document.getText();
+  const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const labelPattern = new RegExp(`\\{#${escapedKey}[\\s\\}]`, "i");
+  const match = labelPattern.exec(text);
+  if (!match) {
+    return undefined;
+  }
+
+  const matchPos = match.index;
+  const beforeMatch = text.slice(0, matchPos);
+  const lineStart = beforeMatch.lastIndexOf("\n") + 1;
+  const lineEnd = text.indexOf("\n", matchPos);
+  const matchLine = text.slice(lineStart, lineEnd === -1 ? text.length : lineEnd).trim();
+
+  const lines = text.split(/\r?\n/);
+  let matchLineIndex = -1;
+  let charCount = 0;
+  for (let i = 0; i < lines.length; i += 1) {
+    if (charCount + lines[i].length >= matchPos) {
+      matchLineIndex = i;
+      break;
+    }
+    charCount += lines[i].length + 1;
+  }
+
+  if (matchLineIndex < 0) {
+    return `\`\`\`\n${matchLine}\n\`\`\``;
+  }
+
+  const contextStart = Math.max(0, matchLineIndex - 2);
+  const contextEnd = Math.min(lines.length - 1, matchLineIndex + 3);
+  const contextLines: string[] = [];
+  for (let i = contextStart; i <= contextEnd; i += 1) {
+    const prefix = i === matchLineIndex ? "> " : "  ";
+    contextLines.push(`${prefix}${lines[i]}`);
+  }
+
+  return `\`\`\`markdown\n${contextLines.join("\n")}\n\`\`\``;
 }
 
 function getCitationTokenAtPosition(document: vscode.TextDocument, position: vscode.Position): CitationToken | undefined {

@@ -65,9 +65,20 @@ export async function getBibliography(keys: string[]): Promise<string> {
           message: t("progress.fetchingGroupBibliography", { groupName }),
         });
 
-        const groupId = groups[groupName];
-        const bib = await getBibliographyInGroup(groupItems[groupName], groupId);
-        bibs.push(bib);
+        try {
+          const groupId = groups[groupName];
+          const bib = await getBibliographyInGroup(groupItems[groupName], groupId);
+          bibs.push(bib);
+        } catch (error) {
+          const message = errorToMessage(error);
+          outputChannel.appendLine(
+            t("error.fetchGroupBibliographyFailed", { groupName, message })
+          );
+          if (message && !message.includes("is not found")) {
+            allErrors.push(message);
+          }
+        }
+
         progress.report({ increment: 100 / totalProgress });
       }
 
