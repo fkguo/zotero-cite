@@ -164,7 +164,9 @@ function getMatchList(pattern: RegExp, text: string): RegExpExecArray[] {
   return matchList;
 }
 
-const PANDOC_CROSSREF_PREFIXES = ["fig:", "tbl:", "eqn:"];
+// pandoc-crossref label prefixes: https://lierdakil.github.io/pandoc-crossref/
+// eqn: is a legacy alias, eq: is the canonical prefix per pandoc-crossref docs
+const PANDOC_CROSSREF_PREFIXES = ["fig:", "tbl:", "eq:", "eqn:", "sec:", "lst:"];
 
 export function isPandocCrossRef(key: string): boolean {
   const lowerKey = key.toLowerCase();

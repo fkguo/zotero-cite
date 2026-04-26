@@ -238,6 +238,14 @@ const messages: Record<string, LocaleMessage> = {
     en: "Equation",
     zhCN: "公式",
   },
+  "hover.crossRef.section": {
+    en: "Section",
+    zhCN: "节",
+  },
+  "hover.crossRef.listing": {
+    en: "Listing",
+    zhCN: "代码块",
+  },
   "hover.crossRef.unknown": {
     en: "Cross-reference",
     zhCN: "交叉引用",

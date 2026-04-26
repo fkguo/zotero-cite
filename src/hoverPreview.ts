@@ -1,3 +1,4 @@
+import * as path from "path";
 import * as vscode from "vscode";
 
 import { isMarkdownLikeDocument, isPandocCrossRef } from "./editor";
@@ -142,17 +143,39 @@ function createCrossRefHover(
 ): vscode.Hover {
   const lowerKey = token.key.toLowerCase();
   let crossRefType: string;
-  if (lowerKey.startsWith("fig:")) {
+  const isFigure = lowerKey.startsWith("fig:");
+
+  if (isFigure) {
     crossRefType = t("hover.crossRef.figure");
   } else if (lowerKey.startsWith("tbl:")) {
     crossRefType = t("hover.crossRef.table");
-  } else if (lowerKey.startsWith("eqn:")) {
+  } else if (lowerKey.startsWith("eq:") || lowerKey.startsWith("eqn:")) {
     crossRefType = t("hover.crossRef.equation");
+  } else if (lowerKey.startsWith("sec:")) {
+    crossRefType = t("hover.crossRef.section");
+  } else if (lowerKey.startsWith("lst:")) {
+    crossRefType = t("hover.crossRef.listing");
   } else {
     crossRefType = t("hover.crossRef.unknown");
   }
 
   markdown.appendMarkdown(`**${t("hover.crossRef.title", { type: crossRefType, key: token.key })}**\n\n`);
+
+  if (isFigure) {
+    const figureInfo = findFigureImage(document, token.key);
+    if (figureInfo) {
+      markdown.isTrusted = true;
+      const imgSrc = vscode.Uri.file(figureInfo.imagePath).toString();
+      markdown.appendMarkdown(`![${figureInfo.caption || ""}](${imgSrc})\n\n`);
+      if (figureInfo.caption) {
+        markdown.appendMarkdown(`_${figureInfo.caption}_\n\n`);
+      }
+      if (figureInfo.context) {
+        markdown.appendMarkdown(`\`\`\`markdown\n${figureInfo.context}\n\`\`\``);
+      }
+      return new vscode.Hover(markdown, token.range);
+    }
+  }
 
   const context = findCrossRefContext(document, token.key);
   if (context) {
@@ -162,6 +185,93 @@ function createCrossRefHover(
   }
 
   return new vscode.Hover(markdown, token.range);
+}
+
+type FigureInfo = {
+  imagePath: string;
+  caption: string;
+  context?: string;
+};
+
+function findFigureImage(document: vscode.TextDocument, key: string): FigureInfo | undefined {
+  const text = document.getText();
+  const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const labelPattern = new RegExp(`\\{#${escapedKey}[\\s\\}]`, "i");
+  const labelMatch = labelPattern.exec(text);
+  if (!labelMatch) {
+    return undefined;
+  }
+
+  const labelStart = labelMatch.index;
+
+  // Search backward from the label to find the associated image definition
+  // Pandoc syntax: ![caption](path){#fig:label}  (image and label on same line)
+  // Also handles: ![caption](path){#fig:label width=50%}
+  const beforeLabel = text.slice(0, labelStart);
+
+  // Find the nearest ![ marker before the label, on the same line
+  const lastNewline = beforeLabel.lastIndexOf("\n");
+  const sameLineBefore = beforeLabel.slice(Math.max(0, lastNewline + 1));
+  const imageStart = sameLineBefore.lastIndexOf("![");
+
+  if (imageStart < 0) {
+    return undefined;
+  }
+
+  const absoluteImageStart = (lastNewline >= 0 ? lastNewline + 1 : 0) + imageStart;
+
+  // Extract the image path: look for ](path) between ![( and )]
+  const afterImageMarker = text.slice(absoluteImageStart + 2); // skip "!["
+  const altEnd = afterImageMarker.indexOf("](");
+  if (altEnd < 0) {
+    return undefined;
+  }
+
+  const altText = afterImageMarker.slice(0, altEnd).trim();
+  const afterAlt = afterImageMarker.slice(altEnd + 2); // skip "]("
+  const pathEnd = afterAlt.indexOf(")");
+  if (pathEnd < 0) {
+    return undefined;
+  }
+
+  const relativePath = afterAlt.slice(0, pathEnd).trim();
+  if (!relativePath) {
+    return undefined;
+  }
+
+  // Resolve the image path relative to the document
+  const documentDir = path.dirname(document.uri.fsPath);
+  const resolvedImagePath = path.resolve(documentDir, relativePath);
+
+  // Build context lines around the image definition
+  const lines = text.split(/\r?\n/);
+  let matchLineIndex = -1;
+  let charCount = 0;
+  for (let i = 0; i < lines.length; i += 1) {
+    if (charCount + lines[i].length >= absoluteImageStart) {
+      matchLineIndex = i;
+      break;
+    }
+    charCount += lines[i].length + 1;
+  }
+
+  let context: string | undefined;
+  if (matchLineIndex >= 0) {
+    const contextStart = Math.max(0, matchLineIndex - 1);
+    const contextEnd = Math.min(lines.length - 1, matchLineIndex + 2);
+    const contextLines: string[] = [];
+    for (let i = contextStart; i <= contextEnd; i += 1) {
+      const prefix = i === matchLineIndex ? "> " : "  ";
+      contextLines.push(`${prefix}${lines[i]}`);
+    }
+    context = contextLines.join("\n");
+  }
+
+  return {
+    imagePath: resolvedImagePath,
+    caption: altText,
+    context,
+  };
 }
 
 function findCrossRefContext(document: vscode.TextDocument, key: string): string | undefined {
