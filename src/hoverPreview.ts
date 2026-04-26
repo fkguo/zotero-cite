@@ -144,12 +144,14 @@ function createCrossRefHover(
   const lowerKey = token.key.toLowerCase();
   let crossRefType: string;
   const isFigure = lowerKey.startsWith("fig:");
+  const isTable = lowerKey.startsWith("tbl:");
+  const isEquation = lowerKey.startsWith("eq:") || lowerKey.startsWith("eqn:");
 
   if (isFigure) {
     crossRefType = t("hover.crossRef.figure");
-  } else if (lowerKey.startsWith("tbl:")) {
+  } else if (isTable) {
     crossRefType = t("hover.crossRef.table");
-  } else if (lowerKey.startsWith("eq:") || lowerKey.startsWith("eqn:")) {
+  } else if (isEquation) {
     crossRefType = t("hover.crossRef.equation");
   } else if (lowerKey.startsWith("sec:")) {
     crossRefType = t("hover.crossRef.section");
@@ -161,24 +163,34 @@ function createCrossRefHover(
 
   markdown.appendMarkdown(`**${t("hover.crossRef.title", { type: crossRefType, key: token.key })}**\n\n`);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (markdown as any).isTrusted = true;
+
   if (isFigure) {
     const figureInfo = findFigureImage(document, token.key);
     if (figureInfo) {
-      // isTrusted enables image rendering in hover MarkdownString (VS Code >=1.57)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (markdown as any).isTrusted = true;
-      const imgSrc = vscode.Uri.file(figureInfo.imagePath).toString();
-      markdown.appendMarkdown(`![${figureInfo.caption || ""}](${imgSrc})\n\n`);
-      if (figureInfo.caption) {
-        markdown.appendMarkdown(`_${figureInfo.caption}_\n\n`);
-      }
-      if (figureInfo.context) {
-        markdown.appendMarkdown(`\`\`\`markdown\n${figureInfo.context}\n\`\`\``);
-      }
+      renderFigureHover(markdown, figureInfo);
       return new vscode.Hover(markdown, token.range);
     }
   }
 
+  if (isTable) {
+    const tableContent = findTableContent(document, token.key);
+    if (tableContent) {
+      markdown.appendMarkdown(tableContent);
+      return new vscode.Hover(markdown, token.range);
+    }
+  }
+
+  if (isEquation) {
+    const eqContent = findEquationContent(document, token.key);
+    if (eqContent) {
+      markdown.appendMarkdown(eqContent);
+      return new vscode.Hover(markdown, token.range);
+    }
+  }
+
+  // Fallback: raw context for sec, lst, or when specialized extractors fail
   const context = findCrossRefContext(document, token.key);
   if (context) {
     markdown.appendMarkdown(context);
@@ -187,6 +199,25 @@ function createCrossRefHover(
   }
 
   return new vscode.Hover(markdown, token.range);
+}
+
+/**
+ * Render a figure preview using markdown image syntax.
+ * VS Code MarkdownString natively renders ![alt](file://...) but blocks
+ * <img src="file://..."> in HTML for security reasons.
+ * VS Code hovers also auto-constrain large images so no explicit CSS is needed.
+ */
+function renderFigureHover(markdown: vscode.MarkdownString, info: FigureInfo): void {
+  // Use vscode.Uri.file → toString() yields file:///C:/... on Windows,
+  // file:///home/... on Linux — VS Code accepts both in markdown ![]()
+  const imgSrc = vscode.Uri.file(info.imagePath).toString();
+  markdown.appendMarkdown(`![${info.caption || "figure"}](${imgSrc})\n\n`);
+  if (info.caption) {
+    markdown.appendMarkdown(`_${info.caption}_\n\n`);
+  }
+  if (info.context) {
+    markdown.appendMarkdown(`\`\`\`markdown\n${info.context}\n\`\`\``);
+  }
 }
 
 type FigureInfo = {
@@ -285,6 +316,178 @@ function findFigureImage(document: vscode.TextDocument, key: string): FigureInfo
     caption: altText,
     context,
   };
+}
+
+/**
+ * Extract a pandoc pipe table body associated with a {#tbl:label}.
+ *
+ * Pandoc table syntax:
+ *   a   b   c
+ *   --- --- ---
+ *   1   2   3
+ *   4   5   6
+ *
+ *   : Caption {#tbl:label}
+ *
+ * The label sits on or after the caption line.  This function:
+ * 1. Locates {#tbl:label}
+ * 2. Finds the caption line (starts with ":" or "Table:") around the label
+ * 3. Walks backward through empty lines, then captures all table rows until
+ *    the blank line above the header row
+ * 4. Returns the table as raw markdown (pipe-style) for rendering in the hover
+ */
+function findTableContent(document: vscode.TextDocument, key: string): string | undefined {
+  const text = document.getText();
+  const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const labelPattern = new RegExp(`\\{#${escapedKey}[\\s\\}]`, "i");
+  const labelMatch = labelPattern.exec(text);
+  if (!labelMatch) {
+    return undefined;
+  }
+
+  const lines = text.split(/\r?\n/);
+  const labelLineIdx = getLineIndexByOffset(text, labelMatch.index);
+
+  // Find the caption line: the line containing the label, or a ":"-prefixed
+  // caption line just before it (label may be on its own line after ": Caption")
+  let captionLineIdx = labelLineIdx;
+  const labelLine = lines[labelLineIdx] || "";
+  if (!/^\s*:/.test(labelLine)) {
+    // Search upward for caption line (max 5 lines above)
+    for (let i = labelLineIdx - 1; i >= Math.max(0, labelLineIdx - 5); i -= 1) {
+      if (/^\s*:/.test(lines[i] || "")) {
+        captionLineIdx = i;
+        break;
+      }
+      if ((lines[i] || "").trim() !== "") {
+        break; // non-empty non-caption line — stop
+      }
+    }
+  }
+
+  // Walk upward from caption line to find table rows.  The table ends above
+  // when we hit a blank line followed by the header row separator.
+  let tableStart = captionLineIdx - 1;
+  // Skip blank lines between caption and table body
+  while (tableStart >= 0 && (lines[tableStart] || "").trim() === "") {
+    tableStart -= 1;
+  }
+  // Now tableStart should be at the last data row. Walk up through rows.
+  // A pandoc pipe table has: header, separator (---), data rows.
+  // Walk backward past all table rows until we hit a blank line.
+  const tableLines: number[] = [];
+  let headerFound = false;
+  for (let i = tableStart; i >= 0; i -= 1) {
+    const line = lines[i] || "";
+    if (line.trim() === "" && headerFound) {
+      // Hit blank line above the table header — we have the full table
+      tableStart = i + 1;
+      break;
+    }
+    if (line.trim() === "") {
+      // Blank line inside table? Unlikely for pipe tables. Stop collecting.
+      tableStart = i + 1;
+      break;
+    }
+    if (/^[\s|:-]+$/.test(line.trim()) && i > 0 && (lines[i - 1] || "").trim() !== "") {
+      // This looks like a separator row (--- | --- etc)
+      headerFound = true;
+    }
+    tableLines.unshift(i);
+    if (i === 0) {
+      tableStart = 0;
+    }
+  }
+
+  // Collect the table section: table start → caption line inclusive
+  const resultLines: string[] = [];
+  for (let i = tableStart; i <= captionLineIdx; i += 1) {
+    resultLines.push(lines[i]);
+  }
+
+  const tableMarkdown = resultLines.join("\n").trim();
+  if (!tableMarkdown) {
+    return undefined;
+  }
+
+  // Boldify pandoc-crossref @references in table cells so they stand out
+  // visually.  VS Code MarkdownString does not support nested hovers, but
+  // CommonMark tables do support **bold** inside cells.
+  // Skips the caption line (last line, starts with ":") to avoid bold-ifying
+  // the caption itself.
+  const processedLines = resultLines.map((line, idx) => {
+    // Don't touch the caption line
+    if (idx === resultLines.length - 1 && /^\s*:/.test(line)) {
+      return line;
+    }
+    // Boldify @fig:/@tbl:/@eq:/@eqn:/@sec:/@lst: references in table cells
+    return line.replace(
+      /(?<![\[*`])@(fig|tbl|eqn?|sec|lst):([\w-]+)/gi,
+      "**@$1:$2**"
+    );
+  });
+
+  return `\n${processedLines.join("\n")}\n`;
+}
+
+/**
+ * Extract equation content associated with {#eq:label} or {#eqn:label}.
+ *
+ * Pandoc syntax:
+ *   $$ math $$ {#eq:label}
+ * or
+ *   $$ math $$
+ *   {#eq:label}
+ *
+ * Returns the equation line(s) rendered as a LaTeX code block so the user
+ * can read the source math (VS Code hovers do not render MathJax/KaTeX).
+ */
+function findEquationContent(document: vscode.TextDocument, key: string): string | undefined {
+  const text = document.getText();
+  const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const labelPattern = new RegExp(`\\{#${escapedKey}[\\s\\}]`, "i");
+  const labelMatch = labelPattern.exec(text);
+  if (!labelMatch) {
+    return undefined;
+  }
+
+  const lines = text.split(/\r?\n/);
+  const labelLineIdx = getLineIndexByOffset(text, labelMatch.index);
+  const labelLine = lines[labelLineIdx] || "";
+
+  // Check if $$ is on the same line as the label
+  const inlineMathMatch = /\$\$/.exec(labelLine);
+  if (inlineMathMatch) {
+    // $$ math $$ {#eq:label}  — extract the math part
+    const mathContent = labelLine.slice(0, labelMatch.index).replace(/\$\$/g, "").trim();
+    if (mathContent) {
+      return `\n$$\n${mathContent}\n$$\n`;
+    }
+  }
+
+  // Search upward (max 3 lines) for the $$ block
+  for (let i = labelLineIdx - 1; i >= Math.max(0, labelLineIdx - 3); i -= 1) {
+    const line = lines[i] || "";
+    if (/\$\$/.test(line)) {
+      // Found the opening $$ — collect lines from there
+      const eqLines: string[] = [];
+      for (let j = i; j < labelLineIdx; j += 1) {
+        eqLines.push(lines[j]);
+      }
+      // Include the closing $$ if not already there
+      const lastEqLine = eqLines[eqLines.length - 1] || "";
+      if (!/\$\$/.test(lastEqLine)) {
+        eqLines.push("$$");
+      }
+      return `\n${eqLines.join("\n")}\n`;
+    }
+    if ((line || "").trim() === "") {
+      break; // blank line — equation block has ended
+    }
+  }
+
+  // Fallback: show the label line as context
+  return `\n\`\`\`latex\n${labelLine.trim()}\n\`\`\`\n`;
 }
 
 /**
