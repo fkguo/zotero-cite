@@ -164,7 +164,9 @@ function createCrossRefHover(
   if (isFigure) {
     const figureInfo = findFigureImage(document, token.key);
     if (figureInfo) {
-      markdown.isTrusted = true;
+      // isTrusted enables image rendering in hover MarkdownString (VS Code >=1.57)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (markdown as any).isTrusted = true;
       const imgSrc = vscode.Uri.file(figureInfo.imagePath).toString();
       markdown.appendMarkdown(`![${figureInfo.caption || ""}](${imgSrc})\n\n`);
       if (figureInfo.caption) {
@@ -193,6 +195,19 @@ type FigureInfo = {
   context?: string;
 };
 
+/**
+ * Find the image associated with a pandoc-crossref figure label.
+ * 
+ * Pandoc syntax requires the image and label on the same line with no spaces between:
+ *   ![Caption](path/to/image.png){#fig:label}
+ *   ![Caption](path/to/image.png){#fig:label width=50%}
+ * 
+ * The function:
+ * 1. Locates {#fig:label} in the document
+ * 2. Searches backward on the same line for ![...](...) 
+ * 3. Validates that no other {#...} block sits between ![ and the target label
+ * 4. Extracts the image path (resolved relative to document) and caption
+ */
 function findFigureImage(document: vscode.TextDocument, key: string): FigureInfo | undefined {
   const text = document.getText();
   const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -204,23 +219,42 @@ function findFigureImage(document: vscode.TextDocument, key: string): FigureInfo
 
   const labelStart = labelMatch.index;
 
-  // Search backward from the label to find the associated image definition
-  // Pandoc syntax: ![caption](path){#fig:label}  (image and label on same line)
-  // Also handles: ![caption](path){#fig:label width=50%}
+  // Confine search to the same line (pandoc-crossref requires label on same line as image)
   const beforeLabel = text.slice(0, labelStart);
-
-  // Find the nearest ![ marker before the label, on the same line
   const lastNewline = beforeLabel.lastIndexOf("\n");
-  const sameLineBefore = beforeLabel.slice(Math.max(0, lastNewline + 1));
-  const imageStart = sameLineBefore.lastIndexOf("![");
+  const lineStartPos = lastNewline >= 0 ? lastNewline + 1 : 0;
+  const sameLineBefore = text.slice(lineStartPos, labelStart);
 
-  if (imageStart < 0) {
+  // Find the nearest ![ marker before the label on this line
+  const imageStartRel = sameLineBefore.lastIndexOf("![");
+  if (imageStartRel < 0) {
     return undefined;
   }
 
-  const absoluteImageStart = (lastNewline >= 0 ? lastNewline + 1 : 0) + imageStart;
+  const absoluteImageStart = lineStartPos + imageStartRel;
 
-  // Extract the image path: look for ](path) between ![( and )]
+  // --- Validate: no other {#...} block between the ![ and the target label ---
+  // This prevents matching a different figure's image when labels are mis-nested.
+  const betweenImageAndLabel = text.slice(absoluteImageStart, labelStart);
+  const otherAttrPattern = /\{#/g;
+  let otherMatch: RegExpExecArray | null;
+  while ((otherMatch = otherAttrPattern.exec(betweenImageAndLabel)) !== null) {
+    // Found another {#...} — this might belong to the image itself.
+    // If the image has {#fig:different-label}, the target label is orphaned.
+    // To verify: skip past this attribute block and check if our label is next.
+    const attrStart = otherMatch.index + absoluteImageStart;
+    const afterAttr = text.slice(attrStart + 2); // skip "{#"
+    const closeBrace = afterAttr.indexOf("}");
+    if (closeBrace >= 0) {
+      const attrContent = afterAttr.slice(0, closeBrace).trim();
+      // Only flag if this is a different figure label (starts with "fig:")
+      if (/^fig:/i.test(attrContent) && attrContent.toLowerCase() !== key.toLowerCase()) {
+        return undefined; // This ![ belongs to a different figure
+      }
+    }
+  }
+
+  // --- Extract image path: ![...](path...) ---
   const afterImageMarker = text.slice(absoluteImageStart + 2); // skip "!["
   const altEnd = afterImageMarker.indexOf("](");
   if (altEnd < 0) {
@@ -239,39 +273,51 @@ function findFigureImage(document: vscode.TextDocument, key: string): FigureInfo
     return undefined;
   }
 
-  // Resolve the image path relative to the document
+  // Resolve the image path relative to the document directory
   const documentDir = path.dirname(document.uri.fsPath);
   const resolvedImagePath = path.resolve(documentDir, relativePath);
 
-  // Build context lines around the image definition
-  const lines = text.split(/\r?\n/);
-  let matchLineIndex = -1;
-  let charCount = 0;
-  for (let i = 0; i < lines.length; i += 1) {
-    if (charCount + lines[i].length >= absoluteImageStart) {
-      matchLineIndex = i;
-      break;
-    }
-    charCount += lines[i].length + 1;
-  }
-
-  let context: string | undefined;
-  if (matchLineIndex >= 0) {
-    const contextStart = Math.max(0, matchLineIndex - 1);
-    const contextEnd = Math.min(lines.length - 1, matchLineIndex + 2);
-    const contextLines: string[] = [];
-    for (let i = contextStart; i <= contextEnd; i += 1) {
-      const prefix = i === matchLineIndex ? "> " : "  ";
-      contextLines.push(`${prefix}${lines[i]}`);
-    }
-    context = contextLines.join("\n");
-  }
+  // Build context lines using newline-counting (robust for \r\n and \n)
+  const context = buildLineContext(text, absoluteImageStart, /* before */ 1, /* after */ 2);
 
   return {
     imagePath: resolvedImagePath,
     caption: altText,
     context,
   };
+}
+
+/**
+ * Locate the line index of a character position by counting newlines.
+ * Works correctly for both \n and \r\n line endings.
+ */
+function getLineIndexByOffset(text: string, offset: number): number {
+  let lineIndex = 0;
+  for (let i = 0; i < offset && i < text.length; i += 1) {
+    if (text[i] === "\n") {
+      lineIndex += 1;
+    }
+  }
+  return lineIndex;
+}
+
+/**
+ * Build a formatted code-block string showing surrounding context lines.
+ * Uses newline-counting (not split) for correct line alignment with \r\n.
+ */
+function buildLineContext(text: string, matchOffset: number, beforeLines: number, afterLines: number): string {
+  const matchLineIndex = getLineIndexByOffset(text, matchOffset);
+  const lines = text.split(/\r?\n/);
+  const totalLines = lines.length;
+
+  const contextStart = Math.max(0, matchLineIndex - beforeLines);
+  const contextEnd = Math.min(totalLines - 1, matchLineIndex + afterLines);
+  const contextLines: string[] = [];
+  for (let i = contextStart; i <= contextEnd; i += 1) {
+    const prefix = i === matchLineIndex ? "> " : "  ";
+    contextLines.push(`${prefix}${lines[i]}`);
+  }
+  return contextLines.join("\n");
 }
 
 function findCrossRefContext(document: vscode.TextDocument, key: string): string | undefined {
@@ -284,35 +330,8 @@ function findCrossRefContext(document: vscode.TextDocument, key: string): string
   }
 
   const matchPos = match.index;
-  const beforeMatch = text.slice(0, matchPos);
-  const lineStart = beforeMatch.lastIndexOf("\n") + 1;
-  const lineEnd = text.indexOf("\n", matchPos);
-  const matchLine = text.slice(lineStart, lineEnd === -1 ? text.length : lineEnd).trim();
-
-  const lines = text.split(/\r?\n/);
-  let matchLineIndex = -1;
-  let charCount = 0;
-  for (let i = 0; i < lines.length; i += 1) {
-    if (charCount + lines[i].length >= matchPos) {
-      matchLineIndex = i;
-      break;
-    }
-    charCount += lines[i].length + 1;
-  }
-
-  if (matchLineIndex < 0) {
-    return `\`\`\`\n${matchLine}\n\`\`\``;
-  }
-
-  const contextStart = Math.max(0, matchLineIndex - 2);
-  const contextEnd = Math.min(lines.length - 1, matchLineIndex + 3);
-  const contextLines: string[] = [];
-  for (let i = contextStart; i <= contextEnd; i += 1) {
-    const prefix = i === matchLineIndex ? "> " : "  ";
-    contextLines.push(`${prefix}${lines[i]}`);
-  }
-
-  return `\`\`\`markdown\n${contextLines.join("\n")}\n\`\`\``;
+  const context = buildLineContext(text, matchPos, /* before */ 2, /* after */ 3);
+  return `\`\`\`markdown\n${context}\n\`\`\``;
 }
 
 function getCitationTokenAtPosition(document: vscode.TextDocument, position: vscode.Position): CitationToken | undefined {
