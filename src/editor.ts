@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 
+import { getLatexCitationCommand } from "./config";
 import { t } from "./i18n";
 
 const MARKDOWN_LIKE_LANGUAGE_IDS = new Set(["markdown", "quarto", "rmd", "mdx"]);
@@ -67,7 +68,7 @@ export function getDocumentCiteKeys(editor: vscode.TextEditor = getActiveEditor(
   }
 
   if (editor.document.languageId === "latex") {
-    pattern = /cite[tp]?(\[[^\]]*\])?\{([\w-:\d]+(,| ){0,2})+\}/g;
+    pattern = getLatexCitationPattern();
   }
 
   if (!pattern) {
@@ -80,10 +81,11 @@ export function getDocumentCiteKeys(editor: vscode.TextEditor = getActiveEditor(
 
 export function insertCiteKeys(keyList: string[], editor: vscode.TextEditor = getActiveEditor()): void {
   const addLocation = getKeyEnvOffset(editor);
+  const latexCitationCommand = getLatexCitationCommand();
 
   if (editor.document.languageId === "latex") {
     if (addLocation === null) {
-      insertText("\\cite{" + keyList.join(", ") + "}", -1, editor);
+      insertText("\\" + latexCitationCommand + "{" + keyList.join(", ") + "}", -1, editor);
     } else {
       insertText(", " + keyList.join(", "), addLocation - 1, editor);
     }
@@ -146,7 +148,7 @@ function getKeyEnvPattern(document: vscode.TextDocument): RegExp | undefined {
   }
 
   if (document.languageId === "latex") {
-    return /cite[tp]?(\[[^\]]*\]){0,2}\{([\w-:\d]+(,|，| ){0,2})+\}/g;
+    return getLatexCitationPattern();
   }
 
   return undefined;
@@ -176,7 +178,7 @@ export function isPandocCrossRef(key: string): boolean {
 function getCiteKeyList(keyMatchList: RegExpExecArray[]): string[] {
   const citeKeyList: string[] = [];
   keyMatchList.forEach((value) => {
-    const cleaned = value[0].replace(/^cite[tp]?/, "");
+    const cleaned = value[0].replace(getLatexCitationPrefixPattern(), "");
     const keyPattern = /[\w-:\d]+/g;
     const keyMatches = getMatchList(keyPattern, cleaned);
     keyMatches.forEach((keyMatch) => {
@@ -188,4 +190,19 @@ function getCiteKeyList(keyMatchList: RegExpExecArray[]): string[] {
   });
 
   return citeKeyList;
+}
+
+function getLatexCitationPattern(): RegExp {
+  const command = getLatexCitationCommand();
+  const escapedCommand = escapeRegExp(command);
+  return new RegExp(escapedCommand + "[tp]?(\\[[^\\]]*\\]){0,2}\\{([\\w-:\\d]+(,|，| ){0,2})+\\}", "g");
+}
+
+function getLatexCitationPrefixPattern(): RegExp {
+  const command = getLatexCitationCommand();
+  return new RegExp("^" + escapeRegExp(command) + "[tp]?");
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

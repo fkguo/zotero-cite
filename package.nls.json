@@ -13,6 +13,7 @@
   "configuration.bibliograpyStyle.description": "URL of bibliography style, see: https://www.zotero.org/styles",
   "configuration.defaultBibName.description": "Default BibTeX file name. Supports placeholders like ${workspaceFolder}, ${fileBasename}, ${fileBasenameNoExtension}, ${fileDirname}, ${fileExtname}",
   "configuration.latexBibStyle.description": "LaTeX bibliography style: bibtex or biblatex",
+  "configuration.latexCitationCommand.description": "LaTeX citation command name without the leading backslash, for example cite, citet, citep",
   "configuration.excludedBibFields.description": "Exclude these fields from BibTeX content fetched from Zotero (for example: file, annotation)",
   "configuration.minimizeZotero.description": "Any non-empty value minimizes the Zotero window after citation",
   "configuration.jsonRpcUrl.description": "Better BibTeX JSON-RPC endpoint URL",
