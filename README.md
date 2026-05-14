@@ -68,8 +68,11 @@ npm run sync:prs -- --remote upstream --limit 5
 
 ![VSCODE插入超链接引用.gif](https://s2.loli.net/2022/05/04/eMSAvoIQC9gViTG.gif)
 
-- Zotero Cite: Zotero Cite: Update BibTex Entries
+- Zotero Cite: Update BibTex Entries
 从 Zotero 更新 defaultBibName 路径对应bib文件的所有项，存在未匹配项则不修改原始记录。
+
+- 支持自定义 LaTeX 引用命令 (Custom LaTeX Citation Command)
+在 LaTeX 编辑环境下，你可以通过修改配置项 `zotero-cite.latexCitationCommand` 来自定义引用时生成的命令字前缀（默认为 `cite`）。当你将其修改为其他命令（例如 `citet`、`citep`、`parencite` 或 `autocite`）时，该插件会自动使用该命令插入文献，并正确识别和解析文中已有的对应格式的引用。
 
 ## 插件配置项
 - zotero-cite.defaultBibName：导出引用文件的默认路径。默认值为`ref.bib`。可以使用通配符：`${workspaceFolder}`、`${fileBasename}`、`${fileBasenameNoExtension}`、`${fileDirname}`、`${fileExtname}`。
