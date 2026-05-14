@@ -33,6 +33,12 @@ export function getLatexBibStyle(): string {
   return getConfiguration().get("latexBibStyle", "bibtex");
 }
 
+export function getLatexCitationCommand(): string {
+  const configuredValue = String(getConfiguration().get("latexCitationCommand", "cite")).trim();
+  const normalized = configuredValue.replace(/^\\+/, "").trim();
+  return normalized.length > 0 ? normalized : "cite";
+}
+
 export function getExcludedBibFields(): string[] {
   const defaultFields = ["file", "annotation"];
   const configuredValue = getConfiguration().get<unknown>("excludedBibFields", defaultFields);

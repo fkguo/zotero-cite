@@ -13,6 +13,7 @@
   "configuration.bibliograpyStyle.description": "参考文献样式 URL，详见：https://www.zotero.org/styles",
   "configuration.defaultBibName.description": "默认 BibTeX 文件名。支持占位符：${workspaceFolder}、${fileBasename}、${fileBasenameNoExtension}、${fileDirname}、${fileExtname}",
   "configuration.latexBibStyle.description": "LaTeX 文献样式：bibtex 或 biblatex",
+  "configuration.latexCitationCommand.description": "LaTeX 引用命令名，不需要包含前导反斜杠，例如 cite、citet、citep",
   "configuration.excludedBibFields.description": "从 Zotero 获取 BibTeX 内容时排除这些字段（例如：file、annotation）",
   "configuration.minimizeZotero.description": "填写任意非空值后，插入引用时将最小化 Zotero 窗口",
   "configuration.jsonRpcUrl.description": "Better BibTeX JSON-RPC 接口地址",

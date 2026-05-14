@@ -74,6 +74,7 @@ npm run sync:prs -- --remote upstream --limit 5
 ## 插件配置项
 - zotero-cite.defaultBibName：导出引用文件的默认路径。默认值为`ref.bib`。可以使用通配符：`${workspaceFolder}`、`${fileBasename}`、`${fileBasenameNoExtension}`、`${fileDirname}`、`${fileExtname}`。
 - zotero-cite.latexBibStyle：导出的LaTeX引用格式，应为`bibtex`或`biblatex`。默认值为`bibtex`。
+- zotero-cite.latexCitationCommand：LaTeX 引用命令名，不需要包含前导反斜杠。默认值为`cite`，例如可改为`citet`或`citep`。
 - zotero-cite.showMarkdownCitationHoverPreview：是否显示 Markdown 中 `[^key]` 与 `@key` 的 hover 预览。默认值为 `true`。
 - zotero-cite.showMarkdownCitationCompletion：是否显示 Markdown 中 `[^` 与 `@` 的引用建议列表。默认值为 `true`。
 
@@ -93,6 +94,7 @@ npm run sync:prs -- --remote upstream --limit 5
 - 2026-02-02: 由于<https://gitee.com/aasll>用户的贡献，在md和tex文件右上角添加了小按钮来插入引用。
 - 2026-02-04: 由于<https://gitee.com/aasll>用户贡献，修复了添加引用无法检测已经添加进来的重复条目的问题，修复了'update biblatex entries'功能，并增强了返回结果的体验。
 - 2026-04-26：增加了对pandoc-crossref格式的图片，表格之类的引用预览。
+- 2026-05-11: 由于<https://gitee.com/aasll>用户贡献，增加自定义引用标签功能，用户现在可以自定义'\cite'或别的什么命令了。
 
 ### 2026-04-20：重要更新
 
