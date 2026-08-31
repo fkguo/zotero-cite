@@ -30,6 +30,10 @@ const messages: Record<string, LocaleMessage> = {
     en: "bibName is invalid or its length is less than 5.",
     zhCN: "bibName 无效或长度小于 5。",
   },
+  "error.bibPathOutsideWorkspace": {
+    en: "The bibliography path is outside the current workspace: {path}",
+    zhCN: "参考文献路径位于当前工作区之外：{path}",
+  },
   "error.noKeyDetected": {
     en: "No key detected.",
     zhCN: "未检测到引用键。",
@@ -54,6 +58,10 @@ const messages: Record<string, LocaleMessage> = {
     en: "Cannot access Zotero endpoint {endpoint} at {url}. Please ensure Zotero is running and Better BibTeX is enabled, then verify setting '{settingKey}'. Details: {message}",
     zhCN: "无法访问 Zotero 接口 {endpoint}（{url}）。请确认 Zotero 已启动且 Better BibTeX 已启用，然后检查设置项“{settingKey}”。详情：{message}",
   },
+  "error.invalidEndpointUrl": {
+    en: "Setting '{settingKey}' must be an HTTP(S) URL without embedded credentials: {url}",
+    zhCN: "设置项“{settingKey}”必须是不含内嵌凭据的 HTTP(S) URL：{url}",
+  },
   "error.saveCurrentTab": {
     en: "Please save current tab.",
     zhCN: "请先保存当前标签页。",
@@ -69,6 +77,18 @@ const messages: Record<string, LocaleMessage> = {
   "error.itemNotFound": {
     en: "'{key}' is not found.",
     zhCN: "未找到 '{key}'。",
+  },
+  "error.noZoteroGroups": {
+    en: "Zotero returned no accessible libraries or groups.",
+    zhCN: "Zotero 未返回可访问的文库或分组。",
+  },
+  "error.groupNotFound": {
+    en: "Zotero item '{itemKey}' belongs to unknown library or group '{groupName}'.",
+    zhCN: "Zotero 条目“{itemKey}”属于未知文库或分组“{groupName}”。",
+  },
+  "error.duplicateZoteroGroupName": {
+    en: "Multiple Zotero groups have the same name '{groupName}'; rename them to avoid ambiguous export.",
+    zhCN: "多个 Zotero 分组使用了同一名称“{groupName}”；请重命名以避免导出歧义。",
   },
   "progress.exportBibliography": {
     en: "Exporting bibliography...",
@@ -101,6 +121,18 @@ const messages: Record<string, LocaleMessage> = {
   "error.noResultFromZotero": {
     en: "No result returned from Zotero.",
     zhCN: "Zotero 未返回结果。",
+  },
+  "error.emptyBibliographyFromZotero": {
+    en: "Zotero returned an empty bibliography; no file was changed.",
+    zhCN: "Zotero 返回了空参考文献；未修改任何文件。",
+  },
+  "error.missingBibliographyEntries": {
+    en: "Zotero did not return the requested BibTeX entries: {keys}. No file was changed.",
+    zhCN: "Zotero 未返回所请求的 BibTeX 条目：{keys}。未修改任何文件。",
+  },
+  "error.editorRejectedEdit": {
+    en: "The editor rejected the requested citation edit.",
+    zhCN: "编辑器拒绝了本次引用文本修改。",
   },
   "error.fetchFromZoteroFailed": {
     en: "Failed to fetch from Zotero: {message}",

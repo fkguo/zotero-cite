@@ -2,20 +2,19 @@ import * as path from "path";
 import * as vscode from "vscode";
 
 import {
-  appendBibliographyEntries,
-  getBibliographyKeyFromFile,
-  readBibEntriesFromFile,
+  ensureBibliographyEntries,
   toBibtex,
-  writeBibEntries,
+  transformBibEntriesAtomically,
+  writeBibliographyText,
 } from "./bibtexStore";
 import { resolveBibPath, validateBibName } from "./bibPath";
 import { getBibliography } from "./bibliography";
+import { uniqueCiteKeys } from "./citeKeys";
 import { getDefaultBibName, setLatestBibName } from "./config";
 import {
   getActiveEditor,
   getDocumentCiteKeys,
   insertCiteKeys,
-  insertText,
   insertTextAsync,
   isMarkdownLikeDocument,
   makeId,
@@ -118,16 +117,16 @@ async function exportBibLatex(): Promise<void> {
 
     validateBibName(bibName);
 
-    const bibPath = vscode.Uri.joinPath(currentFileUri, "..", bibName);
+    const bibPath = resolveBibPath(currentFileUri, bibName);
     const keys = getDocumentCiteKeys(editor);
-    const uniqueKeys = Array.from(new Set(keys));
+    const uniqueKeys = uniqueCiteKeys(keys);
 
     if (uniqueKeys.length === 0) {
       throw new Error(t("error.noKeyDetected"));
     }
 
     const bibliography = await getBibliography(uniqueKeys);
-    await vscode.workspace.fs.writeFile(bibPath, Buffer.from(bibliography + "\n", "utf-8"));
+    await writeBibliographyText(bibPath, bibliography);
     showStatusMessage(t("status.exportSuccess"));
     setLatestBibName(bibName);
   } catch (error) {
@@ -137,11 +136,6 @@ async function exportBibLatex(): Promise<void> {
     }
     showErrorMessage(errorToMessage(error));
   }
-}
-
-async function insertMarkdownBibliography(citeKey: string, editor: vscode.TextEditor): Promise<void> {
-  const bibliography = await getMarkdownBibliography(citeKey);
-  await appendMarkdownFootnoteDefinition(citeKey, bibliography, editor);
 }
 
 function getDocumentEol(editor: vscode.TextEditor): string {
@@ -167,19 +161,70 @@ async function appendMarkdownFootnoteDefinition(
   await insertTextAsync(textToInsert, documentText.length, editor);
 }
 
+function getMarkdownFootnoteDefinitionKeys(editor: vscode.TextEditor): Set<string> {
+  const keys = new Set<string>();
+  const pattern = /^\s*\[\^([^\]\r\n]+)\]:/gm;
+  const text = editor.document.getText();
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(text)) !== null) {
+    keys.add(match[1].trim());
+  }
+  return keys;
+}
+
+async function insertMarkdownCitationAndDefinitions(
+  citeKeys: string[],
+  definitions: Array<{ key: string; content: string }>,
+  editor: vscode.TextEditor
+): Promise<void> {
+  const citation = "[^" + citeKeys.join("][^") + "]";
+  if (definitions.length === 0) {
+    await insertTextAsync(citation, -1, editor);
+    return;
+  }
+
+  const documentText = editor.document.getText();
+  const documentEnd = editor.document.positionAt(documentText.length);
+  const cursor = editor.selection.active;
+  const eol = getDocumentEol(editor);
+  const definitionText = definitions
+    .map(({ key, content }) => `[^${key}]: ${normalizeLineEndings(String(content || "").trim(), eol)}`)
+    .join(eol);
+  const needsLeadingEol = documentText.length > 0 && !/\r?\n$/.test(documentText);
+  const suffix = `${needsLeadingEol ? eol : ""}${definitionText}${eol}`;
+
+  const applied = await editor.edit((editBuilder) => {
+    if (cursor.isEqual(documentEnd)) {
+      editBuilder.insert(cursor, `${citation}${eol}${definitionText}${eol}`);
+      return;
+    }
+
+    editBuilder.insert(cursor, citation);
+    editBuilder.insert(documentEnd, suffix);
+  });
+
+  if (!applied) {
+    throw new Error(t("error.editorRejectedEdit"));
+  }
+}
+
 async function citeMarkdownBibliography(): Promise<void> {
   try {
     const editor = getActiveEditor();
-    const existingKeys = getDocumentCiteKeys(editor);
-    const citeKeys = await pickCiteKeys();
-
-    await insertTextAsync("[^" + citeKeys.join("][^") + "]", -1, editor);
-
+    const existingDefinitions = getMarkdownFootnoteDefinitionKeys(editor);
+    const citeKeys = uniqueCiteKeys(await pickCiteKeys());
+    const definitions: Array<{ key: string; content: string }> = [];
     for (const key of citeKeys) {
-      if (!existingKeys.includes(key)) {
-        await insertMarkdownBibliography(key, editor);
+      if (!existingDefinitions.has(key)) {
+        const content = await getMarkdownBibliography(key);
+        if (!content.trim()) {
+          throw new Error(t("error.noResultFromZotero"));
+        }
+        definitions.push({ key, content });
       }
     }
+
+    await insertMarkdownCitationAndDefinitions(citeKeys, definitions, editor);
   } catch (error) {
     showErrorMessage(errorToMessage(error));
   }
@@ -188,8 +233,8 @@ async function citeMarkdownBibliography(): Promise<void> {
 async function addCitation(): Promise<void> {
   try {
     const editor = getActiveEditor();
-    const citeKeys = await pickCiteKeys();
-    insertCiteKeys(citeKeys, editor);
+    const citeKeys = uniqueCiteKeys(await pickCiteKeys());
+    await insertCiteKeys(citeKeys, editor);
   } catch (error) {
     showErrorMessage(errorToMessage(error));
   }
@@ -239,35 +284,20 @@ async function citeBibliography(): Promise<void> {
     validateBibName(bibName);
 
     const bibPath = resolveBibPath(editor.document.uri, bibName);
-    const citeKeys = await pickCiteKeys();
+    const citeKeys = uniqueCiteKeys(await pickCiteKeys());
+    const result = await ensureBibliographyEntries(bibPath, citeKeys, getBibliography);
 
-    insertCiteKeys(citeKeys, editor);
+    // Do not leave a document citation behind unless its bibliography update succeeded.
+    await insertCiteKeys(citeKeys, editor);
 
-    const bibKeys = await getBibliographyKeyFromFile(bibPath);
-    const uniqueKeys = citeKeys.filter((key) => !bibKeys.includes(key));
-    if (uniqueKeys.length === 0) {
-      return;
-    }
-
-    const newEntries = await getBibliography(uniqueKeys);
-    try {
-      await appendBibliographyEntries(bibPath, newEntries);
-    } catch (error) {
-      showErrorMessage(
-        t("error.readBibliographyFile", {
-          file: bibPath.fsPath,
-          message: errorToMessage(error),
+    if (result.appendedKeys.length > 0) {
+      showStatusMessage(
+        t("status.bibliographyUpdated", {
+          count: result.appendedKeys.length,
+          file: path.basename(bibPath.fsPath),
         })
       );
-      return;
     }
-
-    showStatusMessage(
-      t("status.bibliographyUpdated", {
-        count: uniqueKeys.length,
-        file: path.basename(bibPath.fsPath),
-      })
-    );
   } catch (error) {
     if (error instanceof vscode.CancellationError) {
       showStatusMessage(t("status.exportCancelled"));
@@ -307,38 +337,41 @@ function getBibPath(): vscode.Uri {
 }
 
 async function updateBibEntries(): Promise<void> {
-  const bibPath = getBibPath();
-
   try {
-    const parsedData = await readBibEntriesFromFile(bibPath);
-    const total = parsedData.length;
-
-    let processedCount = 0;
-    let updated = false;
-    const missingKeys: string[] = [];
-    const serializedEntries: string[] = [];
-
+    const bibPath = getBibPath();
     const outputChannel = getOutputChannel();
     outputChannel.appendLine(t("log.updateBibEntriesHeader"));
 
-    for (const entry of parsedData) {
-      const citeKey = String(entry.citationKey);
-      const result = await getBibtexFromZotero(citeKey);
-      if (result === null) {
-        missingKeys.push(citeKey);
-        outputChannel.appendLine(t("log.notFoundBibEntry", { key: citeKey }));
-        serializedEntries.push(toBibtex(entry));
-        continue;
+    const updateResult = await transformBibEntriesAtomically(bibPath, async (parsedData) => {
+      let processedCount = 0;
+      const missingKeys: string[] = [];
+      const serializedEntries: string[] = [];
+
+      for (const entry of parsedData) {
+        const citeKey = String(entry.citationKey);
+        const result = await getBibtexFromZotero(citeKey);
+        if (result === null) {
+          missingKeys.push(citeKey);
+          outputChannel.appendLine(t("log.notFoundBibEntry", { key: citeKey }));
+          serializedEntries.push(toBibtex(entry));
+          continue;
+        }
+
+        processedCount += 1;
+        serializedEntries.push(result);
       }
 
-      processedCount += 1;
-      updated = true;
-      serializedEntries.push(result);
-    }
+      return {
+        serializedEntries: processedCount > 0 ? serializedEntries : undefined,
+        value: {
+          total: parsedData.length,
+          processedCount,
+          missingKeys,
+        },
+      };
+    });
 
-    if (updated) {
-      await writeBibEntries(bibPath, serializedEntries);
-    }
+    const { total, processedCount, missingKeys } = updateResult;
 
     if (missingKeys.length > 0) {
       outputChannel.show(true);

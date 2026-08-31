@@ -1,25 +1,17 @@
 import * as path from "path";
 import * as vscode from "vscode";
 
+import { parseBibtex, ParsedBibEntry } from "./bibtexParser";
 import { isMarkdownLikeDocument, isPandocCrossRef } from "./editor";
 import { resolveBibPath, validateBibName } from "./bibPath";
 import { getDefaultBibName, getShowMarkdownCitationHoverPreview } from "./config";
 import { t } from "./i18n";
 import { getMarkdownBibliography } from "./zotero";
 
-const bibtexParse = require("@orcid/bibtex-parse-js") as {
-  toJSON: (content: string) => Array<Record<string, unknown>>;
-};
-
 type CitationToken = {
   kind: "footnote" | "pandoc";
   key: string;
   range: vscode.Range;
-};
-
-type ParsedBibEntry = {
-  citationKey?: string;
-  entryTags?: Record<string, unknown>;
 };
 
 type LocalBibCacheEntry = {
@@ -38,6 +30,7 @@ const PANDOC_TOKEN_PATTERN = /@([\w-:\d]+)/g;
 const FOOTNOTE_DEFINITION_HEAD_PATTERN = /^\s*\[\^([^\]\r\n]+)\]:\s?(.*)$/;
 const LOCAL_BIB_CACHE_TTL_MS = 30_000;
 const ZOTERO_CACHE_TTL_MS = 5 * 60_000;
+const MAX_CACHE_ENTRIES = 500;
 
 const localBibCache = new Map<string, LocalBibCacheEntry>();
 const zoteroPreviewCache = new Map<string, ZoteroCacheEntry>();
@@ -98,6 +91,7 @@ async function provideMarkdownCitationHover(
 function createFootnoteHover(document: vscode.TextDocument, token: CitationToken): vscode.Hover {
   const definition = getFootnoteDefinition(document, token.key);
   const markdown = new vscode.MarkdownString();
+  markdown.isTrusted = false;
   markdown.appendMarkdown(`**${t("hover.footnote.title", { key: token.key })}**\n\n`);
 
   if (definition) {
@@ -111,13 +105,7 @@ function createFootnoteHover(document: vscode.TextDocument, token: CitationToken
 
 async function createPandocHover(document: vscode.TextDocument, token: CitationToken): Promise<vscode.Hover> {
   const markdown = new vscode.MarkdownString();
-
-  // supportHtml was added in VS Code 1.83 (the extension engine floor is 1.61).
-  // Enable HTML rendering at runtime when available so we can use <img width>
-  // to constrain figure previews in the hover tooltip.
-  if (typeof (markdown as any).supportHtml !== "undefined") {
-    (markdown as any).supportHtml = true;
-  }
+  markdown.isTrusted = false;
 
   if (isPandocCrossRef(token.key)) {
     return createCrossRefHover(document, token, markdown);
@@ -134,7 +122,7 @@ async function createPandocHover(document: vscode.TextDocument, token: CitationT
 
   const zoteroPreview = await getZoteroPreviewCached(token.key);
   if (zoteroPreview) {
-    markdown.appendMarkdown(zoteroPreview);
+    markdown.appendMarkdown(escapeMarkdownText(zoteroPreview));
     markdown.appendMarkdown(`\n\n_${t("hover.sourceLabel", { source: t("hover.source.zotero") })}_`);
     return new vscode.Hover(markdown, token.range);
   }
@@ -173,18 +161,10 @@ function createCrossRefHover(
   if (isFigure) {
     const figureInfo = findFigureImage(document, token.key);
     if (figureInfo) {
-      // Use HTML <img> with explicit width when supportHtml is available
-      // (VS Code ≥ 1.83).  VS Code MarkdownString does not support <style>/CSS
-      // in hover tooltips (sanitization strips them); the only way to constrain
-      // image size is the width attribute.  Falls back to ![]() for older VS Code.
       const imgSrc = vscode.Uri.file(figureInfo.imagePath).toString();
-      if ((markdown as any).supportHtml) {
-        markdown.appendMarkdown(`<img src="${imgSrc}" width="100%" alt="${figureInfo.caption || "figure"}" />\n\n`);
-      } else {
-        markdown.appendMarkdown(`![${figureInfo.caption || "figure"}](${imgSrc})\n\n`);
-      }
+      markdown.appendMarkdown(`![${escapeMarkdownText(figureInfo.caption || "figure")}](${imgSrc})\n\n`);
       if (figureInfo.caption) {
-        markdown.appendMarkdown(`_${figureInfo.caption}_\n\n`);
+        markdown.appendMarkdown(`_${escapeMarkdownText(figureInfo.caption)}_\n\n`);
       }
       if (figureInfo.context) {
         markdown.appendMarkdown(`\`\`\`markdown\n${figureInfo.context}\n\`\`\``);
@@ -422,7 +402,7 @@ function findTableContent(document: vscode.TextDocument, key: string): string | 
     }
     // Boldify @fig:/@tbl:/@eq:/@eqn:/@sec:/@lst: references in table cells
     return line.replace(
-      /(?<![\[*`])@(fig|tbl|eqn?|sec|lst):([\w-]+)/gi,
+      /(?<![[*`])@(fig|tbl|eqn?|sec|lst):([\w-]+)/gi,
       "**@$1:$2**"
     );
   });
@@ -667,7 +647,7 @@ async function getCachedLocalBibEntry(bibPath: vscode.Uri, citeKey: string): Pro
       return undefined;
     }
 
-    localBibCache.set(cacheKey, entry);
+    setBoundedCache(localBibCache, cacheKey, entry);
   }
 
   return entry.byKey.get(citeKey) || entry.byLowerKey.get(citeKey.toLowerCase());
@@ -677,7 +657,7 @@ async function loadLocalBibCacheEntry(bibPath: vscode.Uri): Promise<LocalBibCach
   try {
     const bytes = await vscode.workspace.fs.readFile(bibPath);
     const content = Buffer.from(bytes).toString("utf8");
-    const parsed = bibtexParse.toJSON(content) as ParsedBibEntry[];
+    const parsed = await parseBibtex(content);
 
     const byKey = new Map<string, ParsedBibEntry>();
     const byLowerKey = new Map<string, ParsedBibEntry>();
@@ -711,12 +691,12 @@ function formatLocalBibEntry(entry: ParsedBibEntry, citeKey: string): string {
 
   const lines: string[] = [];
   if (title) {
-    lines.push(`**${title}**`);
+    lines.push(`**${escapeMarkdownText(title)}**`);
   }
 
   const metadata = [author, year, container].filter((value) => value.length > 0).join(" · ");
   if (metadata) {
-    lines.push(metadata);
+    lines.push(escapeMarkdownText(metadata));
   }
 
   if (lines.length === 0) {
@@ -733,6 +713,20 @@ function normalizeField(value: unknown): string {
     .trim();
 }
 
+function escapeMarkdownText(value: string): string {
+  return String(value).replace(/[\\`*_{}[\]()<>#+.!|~-]/g, "\\$&");
+}
+
+function setBoundedCache<K, V>(cache: Map<K, V>, key: K, value: V): void {
+  if (!cache.has(key) && cache.size >= MAX_CACHE_ENTRIES) {
+    const oldestKey = cache.keys().next().value as K | undefined;
+    if (oldestKey !== undefined) {
+      cache.delete(oldestKey);
+    }
+  }
+  cache.set(key, value);
+}
+
 async function getZoteroPreviewCached(citeKey: string): Promise<string | undefined> {
   const now = Date.now();
   const cached = zoteroPreviewCache.get(citeKey);
@@ -747,12 +741,12 @@ async function getZoteroPreviewCached(citeKey: string): Promise<string | undefin
 
   const request = (async (): Promise<string | undefined> => {
     try {
-      const value = (await getMarkdownBibliography(citeKey)).trim();
+      const value = normalizePreviewText(await getMarkdownBibliography(citeKey));
       if (!value) {
         return undefined;
       }
 
-      zoteroPreviewCache.set(citeKey, {
+      setBoundedCache(zoteroPreviewCache, citeKey, {
         expiresAt: Date.now() + ZOTERO_CACHE_TTL_MS,
         value,
       });
@@ -766,6 +760,15 @@ async function getZoteroPreviewCached(citeKey: string): Promise<string | undefin
 
   zoteroPendingRequests.set(citeKey, request);
   return request;
+}
+
+function normalizePreviewText(value: string): string {
+  const normalized = String(value || "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/[{}]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return normalized.length > 500 ? `${normalized.slice(0, 500)}...` : normalized;
 }
 
 function isBibDocument(document: vscode.TextDocument): boolean {

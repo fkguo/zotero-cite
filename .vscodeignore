@@ -9,3 +9,5 @@ tsconfig.json
 **/jsconfig.json
 **/*.map
 **/.eslintrc.json
+**/*SFConflict*
+*.vsix

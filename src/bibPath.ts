@@ -9,8 +9,11 @@ export function validateBibName(bibName: string): void {
   }
 }
 
-export function applyBibTemplateVariables(template: string, filePath: string): string {
-  const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || "";
+export function applyBibTemplateVariables(
+  template: string,
+  filePath: string,
+  workspaceFolder = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(filePath))?.uri.fsPath || ""
+): string {
   const replacements: Record<string, string> = {
     "${workspaceFolder}": workspaceFolder,
     "${fileBasename}": path.basename(filePath),
@@ -28,18 +31,47 @@ export function applyBibTemplateVariables(template: string, filePath: string): s
 }
 
 export function resolveBibPath(currentFileUri: vscode.Uri, bibNameTemplate: string): vscode.Uri {
-  const replaced = applyBibTemplateVariables(bibNameTemplate, currentFileUri.fsPath);
+  const workspaceFolder = vscode.workspace.getWorkspaceFolder(currentFileUri);
+  if (!workspaceFolder && bibNameTemplate.includes("${workspaceFolder}")) {
+    throw new Error(t("error.noWorkspaceFolder"));
+  }
 
+  const replaced = applyBibTemplateVariables(
+    bibNameTemplate,
+    currentFileUri.fsPath,
+    workspaceFolder?.uri.fsPath || ""
+  );
+
+  if (/\$\{[^}]+\}/.test(replaced)) {
+    throw new Error(t("error.invalidBibName"));
+  }
+
+  let resolved: vscode.Uri;
   if (path.isAbsolute(replaced)) {
     const localFileUri = vscode.Uri.file(replaced);
     if (currentFileUri.scheme === "file") {
-      return localFileUri;
+      resolved = localFileUri;
+    } else {
+      resolved = currentFileUri.with({
+        path: localFileUri.path,
+      });
     }
-
-    return currentFileUri.with({
-      path: localFileUri.path,
-    });
+  } else {
+    resolved = vscode.Uri.joinPath(currentFileUri, "..", replaced);
   }
 
-  return vscode.Uri.joinPath(currentFileUri, "..", replaced);
+  if (workspaceFolder && !isUriWithin(workspaceFolder.uri, resolved)) {
+    throw new Error(t("error.bibPathOutsideWorkspace", { path: resolved.fsPath }));
+  }
+
+  return resolved;
+}
+
+function isUriWithin(parent: vscode.Uri, child: vscode.Uri): boolean {
+  if (parent.scheme !== child.scheme || parent.authority !== child.authority) {
+    return false;
+  }
+
+  const relative = path.relative(parent.path, child.path);
+  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
 }

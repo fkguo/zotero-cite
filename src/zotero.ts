@@ -1,5 +1,7 @@
 import axios from "axios";
 
+import { parseBibtex, ParsedBibEntry, serializeBibtex } from "./bibtexParser";
+import { uniqueCiteKeys } from "./citeKeys";
 import {
   getBibliographyStyle,
   getCaywUrl,
@@ -9,17 +11,6 @@ import {
   getMinimizeZotero,
 } from "./config";
 import { errorToMessage, t } from "./i18n";
-
-const bibtexParse = require("@orcid/bibtex-parse-js") as {
-  toJSON: (content: string) => Array<Record<string, unknown>>;
-  toBibtex: (entries: unknown[], compact: boolean) => string;
-};
-
-type ParsedBibEntry = {
-  citationKey?: string;
-  entryType?: string;
-  entryTags?: Record<string, unknown>;
-};
 
 type JsonRpcError = {
   message?: string;
@@ -31,6 +22,37 @@ type JsonRpcResponse<T> = {
 };
 
 class EndpointAccessError extends Error {}
+
+const HTTP_TIMEOUT_MS = 15_000;
+const MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
+
+function validateEndpointUrl(endpointUrl: string, settingKey: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(endpointUrl);
+  } catch (_error) {
+    throw new Error(t("error.invalidEndpointUrl", { settingKey, url: endpointUrl }));
+  }
+
+  if (
+    (parsed.protocol !== "http:" && parsed.protocol !== "https:") ||
+    parsed.username !== "" ||
+    parsed.password !== ""
+  ) {
+    throw new Error(t("error.invalidEndpointUrl", { settingKey, url: endpointUrl }));
+  }
+
+  return parsed.toString();
+}
+
+function getHttpRequestOptions(): Record<string, unknown> {
+  return {
+    timeout: HTTP_TIMEOUT_MS,
+    maxContentLength: MAX_RESPONSE_BYTES,
+    maxBodyLength: MAX_RESPONSE_BYTES,
+    maxRedirects: 0,
+  };
+}
 
 function createEndpointAccessError(
   endpointName: string,
@@ -48,7 +70,7 @@ function createEndpointAccessError(
   );
 }
 
-function removeExcludedBibFields(bibText: string): string {
+async function removeExcludedBibFields(bibText: string): Promise<string> {
   if (!bibText.trim()) {
     return bibText;
   }
@@ -58,36 +80,36 @@ function removeExcludedBibFields(bibText: string): string {
     return bibText;
   }
 
-  try {
-    const entries = bibtexParse.toJSON(bibText) as ParsedBibEntry[];
-    entries.forEach((entry) => {
-      const entryTags = (entry.entryTags || {}) as Record<string, unknown>;
-      Object.keys(entryTags).forEach((tagKey) => {
-        if (excludedFields.has(tagKey.toLowerCase())) {
-          delete entryTags[tagKey];
-        }
-      });
-      entry.entryTags = entryTags;
+  const entries = await parseBibtex(bibText);
+  entries.forEach((entry: ParsedBibEntry) => {
+    const entryTags = (entry.entryTags || {}) as Record<string, unknown>;
+    Object.keys(entryTags).forEach((tagKey) => {
+      if (excludedFields.has(tagKey.toLowerCase())) {
+        delete entryTags[tagKey];
+      }
     });
+    entry.entryTags = entryTags;
+  });
 
-    const sanitized = bibtexParse.toBibtex(entries, false);
-    return sanitized || bibText;
-  } catch (_error) {
-    // If parsing fails, keep original output to avoid blocking user workflows.
-    return bibText;
-  }
+  const sanitized = serializeBibtex(entries);
+  return sanitized || bibText;
 }
 
 async function postJsonRpc<T>(method: string, params: unknown[] = []): Promise<T> {
-  const jsonRpcUrl = getJsonRpcUrl();
+  const configuredUrl = getJsonRpcUrl();
+  const jsonRpcUrl = validateEndpointUrl(configuredUrl, "zotero-cite.jsonRpcUrl");
   let response;
 
   try {
-    response = await axios.post(jsonRpcUrl, {
-      jsonrpc: "2.0",
-      method,
-      params,
-    });
+    response = await axios.post(
+      jsonRpcUrl,
+      {
+        jsonrpc: "2.0",
+        method,
+        params,
+      },
+      getHttpRequestOptions()
+    );
   } catch (error) {
     throw createEndpointAccessError("JSON-RPC", jsonRpcUrl, "zotero-cite.jsonRpcUrl", error);
   }
@@ -101,7 +123,8 @@ async function postJsonRpc<T>(method: string, params: unknown[] = []): Promise<T
 }
 
 export async function pickCiteKeys(): Promise<string[]> {
-  const caywUrl = getCaywUrl();
+  const configuredUrl = getCaywUrl();
+  const caywUrl = validateEndpointUrl(configuredUrl, "zotero-cite.caywUrl");
   let response;
 
   try {
@@ -113,6 +136,7 @@ export async function pickCiteKeys(): Promise<string[]> {
         brackets: "1",
         minimize: getMinimizeZotero(),
       },
+      ...getHttpRequestOptions(),
     });
   } catch (error) {
     throw createEndpointAccessError("CAYW", caywUrl, "zotero-cite.caywUrl", error);
@@ -131,7 +155,7 @@ export async function pickCiteKeys(): Promise<string[]> {
     throw new Error(t("error.noItemSelected"));
   }
 
-  return citeKeys;
+  return uniqueCiteKeys(citeKeys);
 }
 
 export async function getMarkdownBibliography(citeKey: string): Promise<string> {
@@ -150,7 +174,11 @@ export async function getGroups(): Promise<Record<string, string>> {
 
   const groups: Record<string, string> = {};
   (result || []).forEach((item) => {
-    groups[item.name] = String(item.id);
+    const id = String(item.id);
+    if (groups[item.name] && groups[item.name] !== id) {
+      throw new Error(t("error.duplicateZoteroGroupName", { groupName: item.name }));
+    }
+    groups[item.name] = id;
   });
 
   return groups;
@@ -176,7 +204,7 @@ export async function getBibliographyInGroup(keys: string[], groupId: string): P
 export async function getBibtexFromZotero(citeKey: string): Promise<string | null> {
   try {
     const result = await postJsonRpc<string>("item.export", [[citeKey], "bibtex"]);
-    return result ? removeExcludedBibFields(String(result)) : null;
+    return result ? await removeExcludedBibFields(String(result)) : null;
   } catch (error) {
     if (error instanceof EndpointAccessError) {
       throw error;
