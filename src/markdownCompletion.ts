@@ -1,19 +1,11 @@
 import * as vscode from "vscode";
 
+import { parseBibtex, ParsedBibEntry } from "./bibtexParser";
 import { isMarkdownLikeDocument, isPandocCrossRef } from "./editor";
 import { resolveBibPath, validateBibName } from "./bibPath";
 import { getDefaultBibName, getShowMarkdownCitationCompletion } from "./config";
 import { t } from "./i18n";
 import { getMarkdownBibliography } from "./zotero";
-
-const bibtexParse = require("@orcid/bibtex-parse-js") as {
-  toJSON: (content: string) => Array<Record<string, unknown>>;
-};
-
-type ParsedBibEntry = {
-  citationKey?: string;
-  entryTags?: Record<string, unknown>;
-};
 
 type FootnoteCandidate = {
   key: string;
@@ -42,6 +34,8 @@ const PANDOC_TRIGGER_PATTERN = /@([\w-:\d]*)$/;
 const PANDOC_KEY_PATTERN = /@([\w-:\d]+)/g;
 const LOCAL_BIB_CACHE_TTL_MS = 30_000;
 const ZOTERO_CACHE_TTL_MS = 5 * 60_000;
+const MAX_CACHE_ENTRIES = 500;
+const MAX_ZOTERO_COMPLETION_REQUESTS = 25;
 
 const localBibCache = new Map<string, LocalBibCacheEntry>();
 const zoteroPreviewCache = new Map<string, ZoteroCacheEntry>();
@@ -235,8 +229,10 @@ async function collectPandocCandidates(document: vscode.TextDocument, partialKey
     }
   }
 
-  const zoteroCandidates = await Promise.all(
-    Array.from(missingKeysFromDocument).map(async (key): Promise<PandocCandidate | undefined> => {
+  const zoteroCandidates: Array<PandocCandidate | undefined> = [];
+  for (const key of Array.from(missingKeysFromDocument).slice(0, MAX_ZOTERO_COMPLETION_REQUESTS)) {
+    zoteroCandidates.push(
+      await (async (): Promise<PandocCandidate | undefined> => {
       const summary = await getZoteroSummaryCached(key);
       if (!summary) {
         return undefined;
@@ -247,8 +243,9 @@ async function collectPandocCandidates(document: vscode.TextDocument, partialKey
         summary,
         source: "zotero",
       };
-    })
-  );
+      })()
+    );
+  }
 
   zoteroCandidates.forEach((candidate) => {
     if (!candidate) {
@@ -284,7 +281,7 @@ async function getLocalBibEntries(document: vscode.TextDocument): Promise<Map<st
   try {
     const bytes = await vscode.workspace.fs.readFile(bibPath);
     const content = Buffer.from(bytes).toString("utf8");
-    const parsed = bibtexParse.toJSON(content) as ParsedBibEntry[];
+    const parsed = await parseBibtex(content);
     const entries = new Map<string, ParsedBibEntry>();
 
     parsed.forEach((entry) => {
@@ -296,7 +293,7 @@ async function getLocalBibEntries(document: vscode.TextDocument): Promise<Map<st
       entries.set(key, entry);
     });
 
-    localBibCache.set(cacheKey, {
+    setBoundedCache(localBibCache, cacheKey, {
       expiresAt: now + LOCAL_BIB_CACHE_TTL_MS,
       entries,
     });
@@ -361,7 +358,7 @@ async function getZoteroSummaryCached(citeKey: string): Promise<string | undefin
         return undefined;
       }
 
-      zoteroPreviewCache.set(citeKey, {
+      setBoundedCache(zoteroPreviewCache, citeKey, {
         expiresAt: Date.now() + ZOTERO_CACHE_TTL_MS,
         value: summary,
       });
@@ -376,6 +373,16 @@ async function getZoteroSummaryCached(citeKey: string): Promise<string | undefin
 
   zoteroPendingRequests.set(citeKey, request);
   return request;
+}
+
+function setBoundedCache<K, V>(cache: Map<K, V>, key: K, value: V): void {
+  if (!cache.has(key) && cache.size >= MAX_CACHE_ENTRIES) {
+    const oldestKey = cache.keys().next().value as K | undefined;
+    if (oldestKey !== undefined) {
+      cache.delete(oldestKey);
+    }
+  }
+  cache.set(key, value);
 }
 
 function normalizeField(value: unknown): string {

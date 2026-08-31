@@ -3,10 +3,10 @@
 	"publisher": "XING",
 	"displayName": "%displayName%",
 	"repository": {
-		"url": "https://gitee.com/rusterx/zotero-cite"
+		"url": "https://gitee.com/fkguo/zotero-cite"
 	},
 	"description": "Cite and manage bibliography from zotero via json rpc",
-	"version": "0.9.13",
+	"version": "0.9.14",
 	"engines": {
 		"vscode": "^1.61.0"
 	},
@@ -23,6 +23,12 @@
 		"ui",
 		"workspace"
 	],
+	"capabilities": {
+		"untrustedWorkspaces": {
+			"supported": false,
+			"description": "%capabilities.untrustedWorkspaces.description%"
+		}
+	},
 	"main": "./out/extension.js",
 	"contributes": {
 		"commands": [
@@ -198,26 +204,37 @@
 		"compile": "tsc -p ./",
 		"watch": "tsc -watch -p ./",
 		"vscode:prepublish": "npm run compile",
-		"lint": "eslint .",
+		"lint": "eslint . --ext .ts,.js",
 		"sync:prs": "node ./scripts/sync-remote-prs.js",
 		"sync:prs:dry": "node ./scripts/sync-remote-prs.js --dry-run",
 		"pretest": "npm run compile && npm run lint",
-		"test": "node ./test/runTest.js"
+		"test": "npm run test:unit",
+		"test:unit": "mocha --ui tdd \"test/unit/**/*.test.js\"",
+		"test:integration": "node ./test/runTest.js"
 	},
 	"devDependencies": {
-		"@types/vscode": "^1.61.0",
-		"@types/glob": "^7.1.4",
-		"@types/mocha": "^9.0.0",
-		"@types/node": "14.x",
-		"eslint": "^7.32.0",
-		"glob": "^7.1.7",
-		"mocha": "^9.1.1",
-		"typescript": "^4.4.3",
-		"@vscode/test-electron": "^1.6.2"
+		"@types/vscode": "1.61.0",
+		"@types/glob": "^8.1.0",
+		"@types/mocha": "^10.0.10",
+		"@types/node": "^14.18.63",
+		"@typescript-eslint/eslint-plugin": "^5.62.0",
+		"@typescript-eslint/parser": "^5.62.0",
+		"@vscode/test-electron": "^2.4.1",
+		"eslint": "^8.57.1",
+		"glob": "^8.1.0",
+		"mocha": "^10.8.2",
+		"typescript": "^5.1.6"
 	},
 	"dependencies": {
 		"@orcid/bibtex-parse-js": "0.0.25",
-		"axios": "^0.24.0"
+		"axios": "^1.20.0"
+	},
+	"overrides": {
+		"brace-expansion@1.1.11": "1.1.18",
+		"flatted@3.3.3": "3.4.2",
+		"minimatch@3.1.2": "3.1.4",
+		"picomatch@2.3.1": "2.3.2",
+		"serialize-javascript@6.0.2": "7.0.5"
 	},
 	"__metadata": {
 		"id": "92d25ab9-444d-4394-a0ef-4cfa5f705b73",

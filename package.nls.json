@@ -1,6 +1,7 @@
 {
   "displayName": "Zotero Cite",
   "description": "Cite and manage bibliography from Zotero via JSON-RPC",
+  "capabilities.untrustedWorkspaces.description": "This extension reads and writes bibliography files and contacts configured Zotero endpoints.",
   "command.showTaskPicker.title": "Zotero Cite: Project Tasks",
   "command.citeSmart.title": "Zotero Cite: Cite + Bibliography",
   "command.exportBibLatex.title": "Zotero Cite: Export BibLaTeX",

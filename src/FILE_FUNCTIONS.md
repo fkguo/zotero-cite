@@ -6,7 +6,7 @@
 
 - `extension.ts`：扩展入口层，仅负责激活与释放。
 - `commands.ts`：应用编排层，把 VS Code 命令连接到业务流程。
-- `editor.ts`、`zotero.ts`、`bibtexStore.ts`、`bibPath.ts`：能力模块。
+- `editor.ts`、`citationParser.ts`、`zotero.ts`、`bibtexParser.ts`、`bibtexStore.ts`、`bibPath.ts`：能力模块。
 - `config.ts`、`ui.ts`、`i18n.ts`：基础设施模块。
 - `bibliography.ts`：文献导出领域服务，负责按分组聚合与进度反馈。
 
@@ -106,11 +106,17 @@
 
 关键导出：
 - `getActiveEditor()`
-- `insertText(...)`
 - `insertTextAsync(...)`
 - `getDocumentCiteKeys(...)`
 - `insertCiteKeys(...)`
 - `makeId(length)`
+
+### `citationParser.ts`
+
+职责：
+- 以纯函数解析 LaTeX 与 Pandoc/Markdown 引用。
+- 将带 locator 的 Pandoc 引用与 LaTeX 可选参数同 citekey 分离。
+- 识别引用环境区间，并排除 pandoc-crossref 标签。
 
 ### `bibPath.ts`
 
@@ -143,22 +149,30 @@
 
 职责：
 - 读取、解析、写入 `.bib` 文件。
-- 封装 `@orcid/bibtex-parse-js` 的解析与序列化。
-- 提供追加写入、整库覆盖写入等持久化能力。
+- 基于 citekey 去重，并串行化对同一 `.bib` 文件的并发修改。
+- 在临时文件完成解析验证后原子替换目标文件。
 
 关键导出：
 - `getBibliographyKeyFromFile(bibPath)`
 - `readBibEntriesFromFile(bibPath)`
 - `toBibtex(entry)`
-- `appendBibliographyEntries(bibPath, newEntries)`
-- `writeBibEntries(bibPath, entries)`
+- `ensureBibliographyEntries(bibPath, requestedKeys, fetchBibliography)`
+- `writeBibliographyText(bibPath, content)`
+- `transformBibEntriesAtomically(bibPath, transform)`
+
+### `bibtexParser.ts`
+
+职责：
+- 在独立 worker 中解析不可信 BibTeX 文本。
+- 对输入大小和解析时间设置硬上限，避免解析器阻塞扩展宿主。
+- 序列化已经验证的 BibTeX 条目。
 
 ### `bibliography.ts`
 
 职责：
 - 根据引用键列表生成 bibliography 文本。
 - 先按 Zotero 库/分组归并，再批量拉取导出结果。
-- 处理进度提示、取消流程、部分错误与最终拼接输出。
+- 处理进度提示和取消流程；任一条目或分组失败时整体终止，禁止部分导出覆盖文件。
 
 关键导出：
 - `getBibliography(keys)`

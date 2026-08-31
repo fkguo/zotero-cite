@@ -36,7 +36,7 @@ export function getLatexBibStyle(): string {
 export function getLatexCitationCommand(): string {
   const configuredValue = String(getConfiguration().get("latexCitationCommand", "cite")).trim();
   const normalized = configuredValue.replace(/^\\+/, "").trim();
-  return normalized.length > 0 ? normalized : "cite";
+  return /^[A-Za-z@]+$/.test(normalized) ? normalized : "cite";
 }
 
 export function getExcludedBibFields(): string[] {
@@ -63,6 +63,10 @@ export function getDefaultBibName(): string {
 
 export function setLatestBibName(value: string): void {
   latestBibName = value;
+}
+
+export function resetLatestBibName(): void {
+  latestBibName = "";
 }
 
 export function getMinimizeZotero(): string {
