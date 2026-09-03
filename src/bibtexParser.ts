@@ -1,3 +1,4 @@
+import * as path from "path";
 import { Worker } from "worker_threads";
 
 // The package does not publish TypeScript declarations.
@@ -16,21 +17,6 @@ export type ParsedBibEntry = {
 const DEFAULT_PARSE_TIMEOUT_MS = 5_000;
 const MAX_BIBTEX_BYTES = 10 * 1024 * 1024;
 
-const PARSER_WORKER_SOURCE = `
-const { parentPort, workerData } = require("worker_threads");
-
-try {
-  const parser = require(workerData.modulePath);
-  const entries = parser.toJSON(workerData.content);
-  parentPort.postMessage({ ok: true, entries });
-} catch (error) {
-  parentPort.postMessage({
-    ok: false,
-    message: error instanceof Error ? error.message : String(error),
-  });
-}
-`;
-
 type ParserWorkerMessage =
   | { ok: true; entries: ParsedBibEntry[] }
   | { ok: false; message: string };
@@ -48,11 +34,9 @@ export function parseBibtex(
   }
 
   return new Promise((resolve, reject) => {
-    const worker = new Worker(PARSER_WORKER_SOURCE, {
-      eval: true,
+    const worker = new Worker(path.join(__dirname, "bibtexWorker.js"), {
       workerData: {
         content,
-        modulePath: require.resolve("@orcid/bibtex-parse-js"),
       },
     });
 

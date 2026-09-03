@@ -7,8 +7,9 @@ import {
   transformBibEntriesAtomically,
   writeBibliographyText,
 } from "./bibtexStore";
+import { resolveDocumentBibliographyPath } from "./bibliographyResolver";
 import { resolveBibPath, validateBibName } from "./bibPath";
-import { getBibliography } from "./bibliography";
+import { getBibliography, getBibtexEntries } from "./bibliography";
 import { uniqueCiteKeys } from "./citeKeys";
 import { getDefaultBibName, setLatestBibName } from "./config";
 import {
@@ -21,7 +22,7 @@ import {
 } from "./editor";
 import { errorToMessage, t } from "./i18n";
 import { getOutputChannel, showErrorMessage, showInformationMessage, showStatusMessage } from "./ui";
-import { getBibtexFromZotero, getMarkdownBibliography, pickCiteKeys } from "./zotero";
+import { getMarkdownBibliography, pickCiteKeys } from "./zotero";
 
 type CommandPickItem = vscode.QuickPickItem & {
   commandId: string;
@@ -107,7 +108,7 @@ async function exportBibLatex(): Promise<void> {
 
     const currentFileUri = editor.document.uri;
     const bibName = await vscode.window.showInputBox({
-      value: getDefaultBibName(),
+      value: getDefaultBibName(currentFileUri),
       prompt: t("input.fileNamePrompt"),
     });
 
@@ -280,10 +281,10 @@ async function citeBibliography(): Promise<void> {
       throw new Error(t("error.saveCurrentTab"));
     }
 
-    const bibName = getDefaultBibName();
-    validateBibName(bibName);
-
-    const bibPath = resolveBibPath(editor.document.uri, bibName);
+    const bibPath = await resolveDocumentBibliographyPath(editor.document, { promptOnMultiple: true });
+    if (!bibPath) {
+      throw new vscode.CancellationError();
+    }
     const citeKeys = uniqueCiteKeys(await pickCiteKeys());
     const result = await ensureBibliographyEntries(bibPath, citeKeys, getBibliography);
 
@@ -329,16 +330,18 @@ async function addHyperLinkCitation(): Promise<void> {
   }
 }
 
-function getBibPath(): vscode.Uri {
+async function getBibPath(): Promise<vscode.Uri> {
   const editor = getActiveEditor();
-  const bibName = getDefaultBibName();
-  validateBibName(bibName);
-  return resolveBibPath(editor.document.uri, bibName);
+  const bibPath = await resolveDocumentBibliographyPath(editor.document, { promptOnMultiple: true });
+  if (!bibPath) {
+    throw new vscode.CancellationError();
+  }
+  return bibPath;
 }
 
 async function updateBibEntries(): Promise<void> {
   try {
-    const bibPath = getBibPath();
+    const bibPath = await getBibPath();
     const outputChannel = getOutputChannel();
     outputChannel.appendLine(t("log.updateBibEntriesHeader"));
 
@@ -346,13 +349,22 @@ async function updateBibEntries(): Promise<void> {
       let processedCount = 0;
       const missingKeys: string[] = [];
       const serializedEntries: string[] = [];
+      const citeKeys = parsedData.map((entry) => String(entry.citationKey));
+      const fetched = await getBibtexEntries(citeKeys);
 
       for (const entry of parsedData) {
         const citeKey = String(entry.citationKey);
-        const result = await getBibtexFromZotero(citeKey);
-        if (result === null) {
+        const result = fetched.entries.get(citeKey);
+        if (result === undefined) {
           missingKeys.push(citeKey);
-          outputChannel.appendLine(t("log.notFoundBibEntry", { key: citeKey }));
+          const failure = fetched.failures.get(citeKey);
+          outputChannel.appendLine(
+            t("log.unavailableBibEntry", {
+              key: citeKey,
+              code: failure?.code || "UNKNOWN_ERROR",
+              message: failure?.message || "",
+            })
+          );
           serializedEntries.push(toBibtex(entry));
           continue;
         }
@@ -398,6 +410,10 @@ async function updateBibEntries(): Promise<void> {
       })
     );
   } catch (error) {
+    if (error instanceof vscode.CancellationError) {
+      showStatusMessage(t("status.exportCancelled"));
+      return;
+    }
     showErrorMessage(
       t("error.updateBibtexFailed", {
         message: errorToMessage(error),

@@ -2,9 +2,9 @@ import * as path from "path";
 import * as vscode from "vscode";
 
 import { parseBibtex, ParsedBibEntry } from "./bibtexParser";
+import { resolveDocumentBibliographyPath } from "./bibliographyResolver";
 import { isMarkdownLikeDocument, isPandocCrossRef } from "./editor";
-import { resolveBibPath, validateBibName } from "./bibPath";
-import { getDefaultBibName, getShowMarkdownCitationHoverPreview } from "./config";
+import { getShowMarkdownCitationHoverPreview } from "./config";
 import { t } from "./i18n";
 import { getMarkdownBibliography } from "./zotero";
 
@@ -609,7 +609,12 @@ function getFootnoteDefinition(document: vscode.TextDocument, key: string): stri
 }
 
 async function getLocalBibPreview(document: vscode.TextDocument, citeKey: string): Promise<string | undefined> {
-  const bibPath = resolveDocumentBibPath(document);
+  let bibPath: vscode.Uri | undefined;
+  try {
+    bibPath = await resolveDocumentBibliographyPath(document);
+  } catch (_error) {
+    return undefined;
+  }
   if (!bibPath) {
     return undefined;
   }
@@ -620,20 +625,6 @@ async function getLocalBibPreview(document: vscode.TextDocument, citeKey: string
   }
 
   return formatLocalBibEntry(cached, citeKey);
-}
-
-function resolveDocumentBibPath(document: vscode.TextDocument): vscode.Uri | undefined {
-  if (document.isUntitled) {
-    return undefined;
-  }
-
-  try {
-    const bibName = getDefaultBibName();
-    validateBibName(bibName);
-    return resolveBibPath(document.uri, bibName);
-  } catch (_error) {
-    return undefined;
-  }
 }
 
 async function getCachedLocalBibEntry(bibPath: vscode.Uri, citeKey: string): Promise<ParsedBibEntry | undefined> {

@@ -27,8 +27,8 @@ const messages: Record<string, LocaleMessage> = {
     zhCN: "已取消。",
   },
   "error.invalidBibName": {
-    en: "bibName is invalid or its length is less than 5.",
-    zhCN: "bibName 无效或长度小于 5。",
+    en: "Invalid bibliography file name '{value}'. Expected a path ending in .bib.",
+    zhCN: "参考文献文件名“{value}”无效；路径必须以 .bib 结尾。",
   },
   "error.bibPathOutsideWorkspace": {
     en: "The bibliography path is outside the current workspace: {path}",
@@ -58,9 +58,57 @@ const messages: Record<string, LocaleMessage> = {
     en: "Cannot access Zotero endpoint {endpoint} at {url}. Please ensure Zotero is running and Better BibTeX is enabled, then verify setting '{settingKey}'. Details: {message}",
     zhCN: "无法访问 Zotero 接口 {endpoint}（{url}）。请确认 Zotero 已启动且 Better BibTeX 已启用，然后检查设置项“{settingKey}”。详情：{message}",
   },
+  "error.caywSelectionTimeout": {
+    en: "Zotero citation selection did not finish within {minutes} minutes. Run the command again and complete or cancel the Better BibTeX picker.",
+    zhCN: "Zotero 文献选择未在 {minutes} 分钟内完成。请重新运行命令，并在 Better BibTeX 选择器中完成选择或取消。",
+  },
   "error.invalidEndpointUrl": {
     en: "Setting '{settingKey}' must be an HTTP(S) URL without embedded credentials: {url}",
     zhCN: "设置项“{settingKey}”必须是不含内嵌凭据的 HTTP(S) URL：{url}",
+  },
+  "error.invalidInspireEndpointUrl": {
+    en: "The Zotero Inspire endpoint must use HTTP loopback and the exact path /connector/zinspireBibtex: {url}",
+    zhCN: "Zotero Inspire 接口必须使用本机 HTTP 地址及固定路径 /connector/zinspireBibtex：{url}",
+  },
+  "error.inspireTokenAutoDiscoveryFailed": {
+    en: "Zotero Cite could not find the zotero-inspire read token in the local Zotero profile. Ensure zotero-inspire is enabled and restart Zotero.",
+    zhCN: "Zotero Cite 无法在本机 Zotero profile 中找到 zotero-inspire 只读令牌。请确认已启用 zotero-inspire，并重启 Zotero。",
+  },
+  "error.inspireTokenRejected": {
+    en: "Zotero Inspire rejected every read token found in the local Zotero profiles. Restart Zotero so the profile and running plugin use the same token.",
+    zhCN: "Zotero Inspire 拒绝了本机 Zotero profiles 中发现的全部只读令牌。请重启 Zotero，使 profile 与运行中的插件使用同一令牌。",
+  },
+  "error.inspireTokenUnavailable": {
+    en: "Zotero Inspire could not initialize its read token. Restart Zotero and try again.",
+    zhCN: "Zotero Inspire 无法初始化只读令牌，请重启 Zotero 后重试。",
+  },
+  "error.inspireEndpointMissing": {
+    en: "The zotero-inspire BibTeX endpoint is not registered. Ensure a compatible zotero-inspire build is enabled in Zotero.",
+    zhCN: "zotero-inspire BibTeX 接口尚未注册，请确认 Zotero 已启用兼容版本的 zotero-inspire。",
+  },
+  "error.inspireEndpointUnavailable": {
+    en: "Cannot access the zotero-inspire BibTeX endpoint: {message}",
+    zhCN: "无法访问 zotero-inspire BibTeX 接口：{message}",
+  },
+  "error.unsupportedInspireApiVersion": {
+    en: "Unsupported zotero-inspire BibTeX API version: {version}",
+    zhCN: "不支持的 zotero-inspire BibTeX API 版本：{version}",
+  },
+  "error.invalidInspireApiResponse": {
+    en: "zotero-inspire returned an invalid BibTeX API response.",
+    zhCN: "zotero-inspire 返回了无效的 BibTeX API 响应。",
+  },
+  "error.inspireFallbackRejected": {
+    en: "zotero-inspire returned non-INSPIRE BibTeX for {key}; the fallback was rejected because Zotero Inspire is the selected source.",
+    zhCN: "zotero-inspire 为 {key} 返回的 BibTeX 并非来自 INSPIRE；由于已选择 Zotero Inspire 来源，该回退结果已被拒绝。",
+  },
+  "error.inspireEntryKeyMismatch": {
+    en: "zotero-inspire returned BibTeX whose entry key does not match {key}.",
+    zhCN: "zotero-inspire 返回的 BibTeX 条目键与 {key} 不一致。",
+  },
+  "error.inspireBibtexFailed": {
+    en: "Could not obtain INSPIRE BibTeX for all requested entries: {details}. No bibliography file was changed.",
+    zhCN: "无法从 INSPIRE 获取全部请求条目：{details}。参考文献文件未被修改。",
   },
   "error.saveCurrentTab": {
     en: "Please save current tab.",
@@ -130,6 +178,10 @@ const messages: Record<string, LocaleMessage> = {
     en: "Zotero did not return the requested BibTeX entries: {keys}. No file was changed.",
     zhCN: "Zotero 未返回所请求的 BibTeX 条目：{keys}。未修改任何文件。",
   },
+  "error.bibliographyWriteVerificationFailed": {
+    en: "The bibliography write could not be verified for {file}.",
+    zhCN: "无法验证参考文献文件 {file} 的写入结果。",
+  },
   "error.editorRejectedEdit": {
     en: "The editor rejected the requested citation edit.",
     zhCN: "编辑器拒绝了本次引用文本修改。",
@@ -145,6 +197,10 @@ const messages: Record<string, LocaleMessage> = {
   "log.notFoundBibEntry": {
     en: "Not found bib entry {key} in Zotero.",
     zhCN: "在 Zotero 中未找到 bib 条目 {key}。",
+  },
+  "log.unavailableBibEntry": {
+    en: "BibTeX entry {key} was unavailable from the selected source ({code}): {message}",
+    zhCN: "所选来源无法提供 BibTeX 条目 {key}（{code}）：{message}",
   },
   "info.missingBibEntries": {
     en: "{count} bib entries not found in Zotero.",
@@ -181,6 +237,14 @@ const messages: Record<string, LocaleMessage> = {
   "quickPick.taskPickerPlaceholder": {
     en: "Select a Zotero command to run",
     zhCN: "请选择要执行的 Zotero 命令",
+  },
+  "quickPick.bibliographyFileTitle": {
+    en: "Select Bibliography File",
+    zhCN: "选择参考文献文件",
+  },
+  "quickPick.bibliographyFilePlaceholder": {
+    en: "Multiple bibliography files are referenced by this LaTeX project",
+    zhCN: "当前 LaTeX 项目引用了多个参考文献文件",
   },
   "quickPick.availableFor": {
     en: "Available for: {langs}",

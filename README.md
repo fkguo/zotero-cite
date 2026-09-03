@@ -1,5 +1,43 @@
 在markdown、pandoc（.md后缀）、quarto（.qmd后缀）、R Markdown（.rmd后缀）、MDX（.mdx后缀）以及latex文件的编写过程中，如果想要实现类似ms word文件的编辑过程，边插入边更新bib文件。或者想将当前文件的`key`列表，导出最终的bib文件，那么该插件就非常适合你。
 
+## 虚拟工作区与 Overleaf Workshop
+
+Zotero Cite 支持通过 VS Code 虚拟文件系统打开的项目，包括 Overleaf Workshop。对于本地文件，插件使用临时文件和原子替换来更新 `.bib`；对于虚拟工作区，插件使用文件系统提供方的原生写入接口，并在完成后重新读取和验证 BibTeX 内容。
+
+使用虚拟工作区时请注意：
+
+- 工作区必须处于受信任状态，否则 Zotero Cite 会按安全策略被禁用。
+- Zotero 与 Better BibTeX 仍需运行在本机，并允许编辑器访问所配置的 JSON-RPC/CAYW 地址。
+- 远程保存的原子性和并发合并行为由相应的虚拟文件系统提供方决定。
+
+## 自动检测 LaTeX 参考文献文件
+
+在未显式设置 `zotero-cite.defaultBibName` 时，Zotero Cite 会从 LaTeX 项目中自动检测参考文献文件，支持：
+
+- BibTeX 的 `\bibliography{refs}` 和逗号分隔的多个文件。
+- biblatex 的 `\addbibresource`、`\addglobalbib` 与 `\addsectionbib`。
+- `% !TeX root = main.tex` 根文件指令。
+- 通过 `\input`、`\include` 与 `\subfile` 引入的项目文件。
+
+如果项目引用多个 `.bib` 文件，插件会要求选择，并在候选集合不变时记住本次编辑器会话中的选择。用户显式设置的 `zotero-cite.defaultBibName` 始终优先于自动检测；无法从 LaTeX 声明静态解析路径时，插件还会扫描当前工作区中已有的 `.bib` 文件：只有一个时自动采用，存在多个时要求选择。声明和已有文件均未检测到时才回退到 `ref.bib`。空字符串配置等同于未显式设置。
+
+## 选择 BibTeX 来源
+
+`zotero-cite.bibtexSource` 可以选择写入 `.bib` 文件的来源：
+
+- `better-bibtex`（默认）：通过 Better BibTeX JSON-RPC 导出。
+- `zotero-inspire`：通过 zotero-inspire 的本机只读接口从 INSPIRE-HEP 获取。
+
+无论选择哪一种来源，Zotero 条目选择器仍由 Better BibTeX CAYW 提供。来源设置影响 BibTeX/BibLaTeX 文件的整体导出、自动补充缺失条目和更新已有条目；Markdown 脚注式格式化文献仍使用 Better BibTeX。
+
+首次使用时，只需在 Zotero 中启用包含只读 BibTeX API 的 zotero-inspire，并将 `zotero-cite.bibtexSource` 设为 `zotero-inspire`。Zotero Cite 会自动定位当前操作系统中的 Zotero profiles，从 `prefs.js` 读取 zotero-inspire 专用只读令牌，并把已验证令牌缓存到 VS Code/Cursor Secret Storage；无需复制令牌，也不会把令牌写入项目设置。
+
+自动发现支持 macOS、Windows、常规 Linux 安装以及 Linux Flatpak 的标准 Zotero profile 位置。若切换 Zotero profile 或插件重新生成令牌，客户端会重新检查本机 profiles 并更新缓存。
+
+默认接口为 `http://127.0.0.1:23119/connector/zinspireBibtex`。客户端只允许数值型本机回环地址、HTTP 协议和固定接口路径，自动发现的只读令牌不会发送给远端服务。
+
+选择 `zotero-inspire` 后，插件只接受接口明确标记为 `INSPIRE-HEP` 的 BibTeX。若 INSPIRE 条目缺失、引用键有歧义，或者服务端改用 Better BibTeX fallback，本次新增操作会整体失败且不会插入 `\cite{...}`；更新已有 `.bib` 时则保留无法从 INSPIRE 获取的原始条目，并在输出面板记录原因。
+
 ## 自动融合远程 Pull Requests
 
 项目里新增了一个自动合并脚本，可按顺序抓取并合并远程 PR 引用到当前分支。
@@ -75,9 +113,11 @@ npm run sync:prs -- --remote upstream --limit 5
 在 LaTeX 编辑环境下，你可以通过修改配置项 `zotero-cite.latexCitationCommand` 来自定义引用时生成的命令字前缀（默认为 `cite`）。当你将其修改为其他命令（例如 `citet`、`citep`、`parencite` 或 `autocite`）时，该插件会自动使用该命令插入文献，并正确识别和解析文中已有的对应格式的引用。
 
 ## 插件配置项
-- zotero-cite.defaultBibName：导出引用文件的默认路径。默认值为`ref.bib`。可以使用通配符：`${workspaceFolder}`、`${fileBasename}`、`${fileBasenameNoExtension}`、`${fileDirname}`、`${fileExtname}`。
+- zotero-cite.defaultBibName：显式指定参考文献路径，并覆盖 LaTeX 自动检测。未显式设置且无法检测时使用 `ref.bib`。可以使用通配符：`${workspaceFolder}`、`${fileBasename}`、`${fileBasenameNoExtension}`、`${fileDirname}`、`${fileExtname}`。
 - zotero-cite.latexBibStyle：导出的LaTeX引用格式，应为`bibtex`或`biblatex`。默认值为`bibtex`。
 - zotero-cite.latexCitationCommand：LaTeX 引用命令名，不需要包含前导反斜杠。默认值为`cite`，例如可改为`citet`或`citep`。
+- zotero-cite.bibtexSource：写入 `.bib` 文件的来源，可选 `better-bibtex`（默认）或 `zotero-inspire`。
+- zotero-cite.zoteroInspireBibtexUrl：zotero-inspire 本机只读 BibTeX 接口。仅支持本机回环 HTTP 地址和固定路径 `/connector/zinspireBibtex`。
 - zotero-cite.showMarkdownCitationHoverPreview：是否显示 Markdown 中 `[^key]` 与 `@key` 的 hover 预览。默认值为 `true`。
 - zotero-cite.showMarkdownCitationCompletion：是否显示 Markdown 中 `[^` 与 `@` 的引用建议列表。默认值为 `true`。
 

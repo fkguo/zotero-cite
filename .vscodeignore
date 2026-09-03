@@ -1,9 +1,14 @@
 .vscode/**
 .vscode-test/**
 test/**
+node_modules/**
+out/**
+scripts/**
 .gitignore
+.eslintignore
 .yarnrc
 vsc-extension-quickstart.md
+vscode api使用说明.md
 src/**
 tsconfig.json
 **/jsconfig.json
@@ -11,3 +16,5 @@ tsconfig.json
 **/.eslintrc.json
 **/*SFConflict*
 *.vsix
+images/*.jpg
+images/*.psd
