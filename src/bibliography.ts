@@ -1,9 +1,25 @@
 import * as vscode from "vscode";
 
+import { getBibtexSource } from "./config";
+import {
+  BibtexFailure,
+  fetchInspireBibtexEntries,
+  getInspireBibliography,
+} from "./inspireBibtex";
 import { t } from "./i18n";
-import { getBibliographyInGroup, getGroups, getItemGroupName } from "./zotero";
+import {
+  getBibliographyInGroup,
+  getBibtexFromZotero,
+  getGroups,
+  getItemGroupName,
+} from "./zotero";
 
-export async function getBibliography(keys: string[]): Promise<string> {
+export type BibtexEntryFetchResult = {
+  entries: Map<string, string>;
+  failures: Map<string, BibtexFailure>;
+};
+
+async function getBetterBibtexBibliography(keys: string[]): Promise<string> {
   const groups = await getGroups();
   const groupNames = Object.keys(groups);
 
@@ -71,4 +87,29 @@ export async function getBibliography(keys: string[]): Promise<string> {
       return bibs.join("\n\n");
     }
   );
+}
+
+export async function getBibliography(keys: string[]): Promise<string> {
+  if (getBibtexSource() === "zotero-inspire") {
+    return getInspireBibliography(keys);
+  }
+  return getBetterBibtexBibliography(keys);
+}
+
+export async function getBibtexEntries(keys: string[]): Promise<BibtexEntryFetchResult> {
+  if (getBibtexSource() === "zotero-inspire") {
+    return fetchInspireBibtexEntries(keys);
+  }
+
+  const entries = new Map<string, string>();
+  const failures = new Map<string, BibtexFailure>();
+  for (const key of Array.from(new Set(keys))) {
+    const bibtex = await getBibtexFromZotero(key);
+    if (bibtex === null) {
+      failures.set(key, { code: "NOT_FOUND", message: t("error.itemNotFound", { key }) });
+    } else {
+      entries.set(key, bibtex);
+    }
+  }
+  return { entries, failures };
 }

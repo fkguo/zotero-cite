@@ -2,10 +2,12 @@ import * as vscode from "vscode";
 
 const CONFIG_SECTION = "zotero-cite";
 
-let latestBibName = "";
+export type BibtexSource = "better-bibtex" | "zotero-inspire";
 
-function getConfiguration(): vscode.WorkspaceConfiguration {
-  return vscode.workspace.getConfiguration(CONFIG_SECTION);
+let latestBibName: string | undefined;
+
+function getConfiguration(resource?: vscode.Uri): vscode.WorkspaceConfiguration {
+  return vscode.workspace.getConfiguration(CONFIG_SECTION, resource);
 }
 
 export function getStatusMessageDuration(): number {
@@ -54,19 +56,45 @@ export function getExcludedBibFields(): string[] {
   return Array.from(new Set(normalized));
 }
 
-export function getDefaultBibName(): string {
-  if (latestBibName === "") {
-    latestBibName = getConfiguration().get("defaultBibName", "ref.bib");
+export function getDefaultBibName(resource?: vscode.Uri): string {
+  const configuredValue = String(getConfiguration(resource).get("defaultBibName", "ref.bib")).trim();
+  return latestBibName || configuredValue || "ref.bib";
+}
+
+export function getExplicitBibName(resource?: vscode.Uri): string | undefined {
+  if (latestBibName) {
+    return latestBibName;
   }
-  return latestBibName;
+
+  const configuration = getConfiguration(resource);
+  const inspected = configuration.inspect<string>("defaultBibName");
+  if (!inspected) {
+    return undefined;
+  }
+
+  const explicitlyConfigured = [
+    inspected.globalValue,
+    inspected.workspaceValue,
+    inspected.workspaceFolderValue,
+    inspected.globalLanguageValue,
+    inspected.workspaceLanguageValue,
+    inspected.workspaceFolderLanguageValue,
+  ].some((value) => value !== undefined);
+
+  if (!explicitlyConfigured) {
+    return undefined;
+  }
+
+  const value = String(configuration.get("defaultBibName", "")).trim();
+  return value || undefined;
 }
 
 export function setLatestBibName(value: string): void {
-  latestBibName = value;
+  latestBibName = value.trim() || undefined;
 }
 
 export function resetLatestBibName(): void {
-  latestBibName = "";
+  latestBibName = undefined;
 }
 
 export function getMinimizeZotero(): string {
@@ -79,4 +107,16 @@ export function getJsonRpcUrl(): string {
 
 export function getCaywUrl(): string {
   return getConfiguration().get("caywUrl", "http://localhost:23119/better-bibtex/cayw");
+}
+
+export function getBibtexSource(): BibtexSource {
+  const source = String(getConfiguration().get("bibtexSource", "better-bibtex"));
+  return source === "zotero-inspire" ? source : "better-bibtex";
+}
+
+export function getZoteroInspireBibtexUrl(): string {
+  return getConfiguration().get(
+    "zoteroInspireBibtexUrl",
+    "http://127.0.0.1:23119/connector/zinspireBibtex"
+  );
 }

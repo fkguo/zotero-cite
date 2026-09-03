@@ -21,9 +21,12 @@ type JsonRpcResponse<T> = {
   result?: T;
 };
 
+type ZoteroLibraryId = string | number;
+
 class EndpointAccessError extends Error {}
 
 const HTTP_TIMEOUT_MS = 15_000;
+const CAYW_SELECTION_TIMEOUT_MS = 5 * 60_000;
 const MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
 
 function validateEndpointUrl(endpointUrl: string, settingKey: string): string {
@@ -45,9 +48,9 @@ function validateEndpointUrl(endpointUrl: string, settingKey: string): string {
   return parsed.toString();
 }
 
-function getHttpRequestOptions(): Record<string, unknown> {
+function getHttpRequestOptions(timeout = HTTP_TIMEOUT_MS): Record<string, unknown> {
   return {
-    timeout: HTTP_TIMEOUT_MS,
+    timeout,
     maxContentLength: MAX_RESPONSE_BYTES,
     maxBodyLength: MAX_RESPONSE_BYTES,
     maxRedirects: 0,
@@ -70,7 +73,7 @@ function createEndpointAccessError(
   );
 }
 
-async function removeExcludedBibFields(bibText: string): Promise<string> {
+export async function sanitizeBibtexFields(bibText: string): Promise<string> {
   if (!bibText.trim()) {
     return bibText;
   }
@@ -127,6 +130,20 @@ export async function pickCiteKeys(): Promise<string[]> {
   const caywUrl = validateEndpointUrl(configuredUrl, "zotero-cite.caywUrl");
   let response;
 
+  // Better BibTeX keeps the CAYW request open while its interactive picker is
+  // visible. Probe the service separately so endpoint failures stay fast while
+  // users get enough time to find and select an item.
+  try {
+    await axios({
+      method: "get",
+      url: caywUrl,
+      params: { probe: "1" },
+      ...getHttpRequestOptions(),
+    });
+  } catch (error) {
+    throw createEndpointAccessError("CAYW", caywUrl, "zotero-cite.caywUrl", error);
+  }
+
   try {
     response = await axios({
       method: "get",
@@ -136,9 +153,16 @@ export async function pickCiteKeys(): Promise<string[]> {
         brackets: "1",
         minimize: getMinimizeZotero(),
       },
-      ...getHttpRequestOptions(),
+      ...getHttpRequestOptions(CAYW_SELECTION_TIMEOUT_MS),
     });
   } catch (error) {
+    if (axios.isAxiosError(error) && error.code === "ECONNABORTED") {
+      throw new Error(
+        t("error.caywSelectionTimeout", {
+          minutes: CAYW_SELECTION_TIMEOUT_MS / 60_000,
+        })
+      );
+    }
     throw createEndpointAccessError("CAYW", caywUrl, "zotero-cite.caywUrl", error);
   }
 
@@ -169,26 +193,31 @@ export async function getMarkdownBibliography(citeKey: string): Promise<string> 
   return result || "";
 }
 
-export async function getGroups(): Promise<Record<string, string>> {
-  const result = await postJsonRpc<Array<{ id: string; name: string }>>("user.groups");
+export async function getGroups(): Promise<Record<string, ZoteroLibraryId>> {
+  const result = await postJsonRpc<Array<{ id: ZoteroLibraryId; name: string }>>("user.groups");
 
-  const groups: Record<string, string> = {};
+  const groups: Record<string, ZoteroLibraryId> = {};
   (result || []).forEach((item) => {
-    const id = String(item.id);
-    if (groups[item.name] && groups[item.name] !== id) {
+    if (Object.prototype.hasOwnProperty.call(groups, item.name) && groups[item.name] !== item.id) {
       throw new Error(t("error.duplicateZoteroGroupName", { groupName: item.name }));
     }
-    groups[item.name] = id;
+    groups[item.name] = item.id;
   });
 
   return groups;
 }
 
 export async function getItemGroupName(key: string): Promise<string> {
-  const result = await postJsonRpc<Array<{ "citation-key": string; library: string }>>("item.search", [key]);
+  // Better BibTeX 9 on Zotero 8 currently fails its plain-string quick-search
+  // path because it adds the removed `blockStart` search condition. The
+  // structured citation-key condition is both exact and supported by current
+  // and older JSON-RPC implementations.
+  const result = await postJsonRpc<
+    Array<{ "citation-key"?: string; citekey?: string; library: string }>
+  >("item.search", [[["citationKey", "is", key]], "*"]);
 
   for (const item of result || []) {
-    if (item["citation-key"] === key) {
+    if ((item.citekey || item["citation-key"]) === key) {
       return item.library;
     }
   }
@@ -196,15 +225,18 @@ export async function getItemGroupName(key: string): Promise<string> {
   throw new Error(t("error.itemNotFound", { key }));
 }
 
-export async function getBibliographyInGroup(keys: string[], groupId: string): Promise<string> {
+export async function getBibliographyInGroup(
+  keys: string[],
+  groupId: ZoteroLibraryId
+): Promise<string> {
   const bibText = await postJsonRpc<string>("item.export", [keys, getLatexBibStyle(), groupId]);
-  return removeExcludedBibFields(String(bibText || ""));
+  return sanitizeBibtexFields(String(bibText || ""));
 }
 
 export async function getBibtexFromZotero(citeKey: string): Promise<string | null> {
   try {
     const result = await postJsonRpc<string>("item.export", [[citeKey], "bibtex"]);
-    return result ? await removeExcludedBibFields(String(result)) : null;
+    return result ? await sanitizeBibtexFields(String(result)) : null;
   } catch (error) {
     if (error instanceof EndpointAccessError) {
       throw error;

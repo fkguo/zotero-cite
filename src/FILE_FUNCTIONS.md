@@ -6,7 +6,7 @@
 
 - `extension.ts`：扩展入口层，仅负责激活与释放。
 - `commands.ts`：应用编排层，把 VS Code 命令连接到业务流程。
-- `editor.ts`、`citationParser.ts`、`zotero.ts`、`bibtexParser.ts`、`bibtexStore.ts`、`bibPath.ts`：能力模块。
+- `editor.ts`、`citationParser.ts`、`zotero.ts`、`inspireBibtex.ts`、`inspireSecret.ts`、`zoteroProfile.ts`、`bibtexParser.ts`、`bibtexStore.ts`、`bibPath.ts`、`bibliographyResolver.ts`、`latexBibliography.ts`：能力模块。
 - `config.ts`、`ui.ts`、`i18n.ts`：基础设施模块。
 - `bibliography.ts`：文献导出领域服务，负责按分组聚合与进度反馈。
 
@@ -68,10 +68,13 @@
 - `getBibliographyStyle()`
 - `getLatexBibStyle()`
 - `getDefaultBibName()`
+- `getExplicitBibName(resource?)`
 - `setLatestBibName(value)`
 - `getMinimizeZotero()`
 - `getJsonRpcUrl()`
 - `getCaywUrl()`
+- `getBibtexSource()`
+- `getZoteroInspireBibtexUrl()`
 
 ### `ui.ts`
 
@@ -130,6 +133,18 @@
 - `applyBibTemplateVariables(template, filePath)`
 - `resolveBibPath(currentFileUri, bibNameTemplate)`
 
+### `bibliographyResolver.ts` 与 `latexBibliography.ts`
+
+职责：
+- 在显式 `defaultBibName`、LaTeX 自动检测与 `ref.bib` 回退之间执行统一优先级。
+- 识别 BibTeX/biblatex 资源命令、TeX root 指令和递归 include 关系。
+- 多参考文献文件时要求用户选择，并保持虚拟工作区 URI 的 scheme、authority 与 query。
+
+关键导出：
+- `resolveDocumentBibliographyPath(document, options?)`
+- `detectLatexBibliographyPaths(document)`
+- `extractLatexBibliographyReferences(content)`
+
 ### `zotero.ts`
 
 职责：
@@ -144,6 +159,24 @@
 - `getItemGroupName(key)`
 - `getBibliographyInGroup(keys, groupId)`
 - `getBibtexFromZotero(citeKey)`
+- `sanitizeBibtexFields(bibText)`
+
+### `inspireBibtex.ts`、`inspireSecret.ts` 与 `zoteroProfile.ts`
+
+职责：
+- 调用 zotero-inspire API v1 的 `ping` 与 `fetch` 操作。
+- 只向数值型本机回环地址发送专用只读令牌，并限制响应大小、超时和重定向。
+- 校验响应顺序、引用键与 BibTeX entry key；选择 zotero-inspire 时拒绝 Better BibTeX fallback。
+- 按服务端声明的批量上限切分请求，并保留逐条失败信息。
+- 自动定位 macOS、Windows、Linux 与 Linux Flatpak 的标准 Zotero profiles，从 `prefs.js` 发现专用只读令牌。
+- 验证成功后通过 VS Code/Cursor Secret Storage 缓存令牌，避免人工配置和写入工作区设置。
+
+关键导出：
+- `fetchInspireBibtexEntries(keys)`
+- `getInspireBibliography(keys)`
+- `initializeInspireSecretStorage(storage)`
+- `storeInspireReadToken(value)`
+- `discoverZoteroInspireReadTokens()`
 
 ### `bibtexStore.ts`
 
@@ -166,16 +199,18 @@
 - 在独立 worker 中解析不可信 BibTeX 文本。
 - 对输入大小和解析时间设置硬上限，避免解析器阻塞扩展宿主。
 - 序列化已经验证的 BibTeX 条目。
+- 开发构建输出到 `out/`；发布时主扩展和独立 parser worker 分别 bundle 到 `dist/extension.js` 与 `dist/bibtexWorker.js`。
 
 ### `bibliography.ts`
 
 职责：
-- 根据引用键列表生成 bibliography 文本。
-- 先按 Zotero 库/分组归并，再批量拉取导出结果。
+- 根据配置选择 Better BibTeX 或 zotero-inspire，并按引用键列表生成 bibliography 文本。
+- Better BibTeX 来源先按 Zotero 库/分组归并；zotero-inspire 来源按 API 上限批量获取。
 - 处理进度提示和取消流程；任一条目或分组失败时整体终止，禁止部分导出覆盖文件。
 
 关键导出：
 - `getBibliography(keys)`
+- `getBibtexEntries(keys)`
 
 ## 命令映射说明
 
@@ -190,7 +225,7 @@
 ## 维护建议
 
 - `extension.ts` 保持最小化，新功能入口优先放到 `commands.ts`。
-- 网络访问统一放在 `zotero.ts`，不要散落在命令处理函数中。
+- 网络访问统一放在 `zotero.ts` 与 `inspireBibtex.ts`，不要散落在命令处理函数中。
 - 编辑器文本处理放在 `editor.ts`，避免命令层堆叠细节。
 - 文件系统与 BibTeX 解析放在 `bibtexStore.ts`。
 - 所有用户可见文案统一通过 `i18n.ts` 管理。

@@ -3,11 +3,13 @@ import { registerCommands } from "./commands";
 import { resetLatestBibName } from "./config";
 import { registerMarkdownCitationPreview } from "./hoverPreview";
 import { t } from "./i18n";
+import { disposeInspireSecretStorage, initializeInspireSecretStorage } from "./inspireSecret";
 import { registerMarkdownCitationCompletion } from "./markdownCompletion";
 import { disposeUiResources, initializeUi } from "./ui";
 
 export function activate(context: vscode.ExtensionContext): void {
   console.log(t("activate.message"));
+  initializeInspireSecretStorage(context.secrets);
   registerCommands(context);
   registerMarkdownCitationPreview(context);
   registerMarkdownCitationCompletion(context);
@@ -22,5 +24,6 @@ export function activate(context: vscode.ExtensionContext): void {
 }
 
 export function deactivate(): void {
+  disposeInspireSecretStorage();
   disposeUiResources();
 }

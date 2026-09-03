@@ -1,9 +1,9 @@
 import * as vscode from "vscode";
 
 import { parseBibtex, ParsedBibEntry } from "./bibtexParser";
+import { resolveDocumentBibliographyPath } from "./bibliographyResolver";
 import { isMarkdownLikeDocument, isPandocCrossRef } from "./editor";
-import { resolveBibPath, validateBibName } from "./bibPath";
-import { getDefaultBibName, getShowMarkdownCitationCompletion } from "./config";
+import { getShowMarkdownCitationCompletion } from "./config";
 import { t } from "./i18n";
 import { getMarkdownBibliography } from "./zotero";
 
@@ -266,7 +266,12 @@ function filterAndSortCandidates<T extends { key: string }>(items: T[], partialK
 }
 
 async function getLocalBibEntries(document: vscode.TextDocument): Promise<Map<string, ParsedBibEntry>> {
-  const bibPath = resolveDocumentBibPath(document);
+  let bibPath: vscode.Uri | undefined;
+  try {
+    bibPath = await resolveDocumentBibliographyPath(document);
+  } catch (_error) {
+    return new Map();
+  }
   if (!bibPath) {
     return new Map();
   }
@@ -301,20 +306,6 @@ async function getLocalBibEntries(document: vscode.TextDocument): Promise<Map<st
     return entries;
   } catch (_error) {
     return new Map();
-  }
-}
-
-function resolveDocumentBibPath(document: vscode.TextDocument): vscode.Uri | undefined {
-  if (document.isUntitled) {
-    return undefined;
-  }
-
-  try {
-    const bibName = getDefaultBibName();
-    validateBibName(bibName);
-    return resolveBibPath(document.uri, bibName);
-  } catch (_error) {
-    return undefined;
   }
 }
 

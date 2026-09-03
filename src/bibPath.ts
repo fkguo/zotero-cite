@@ -3,9 +3,14 @@ import * as vscode from "vscode";
 
 import { t } from "./i18n";
 
+export function isValidBibName(bibName: string): boolean {
+  return bibName.length >= 5 && path.extname(bibName).toLowerCase() === ".bib";
+}
+
 export function validateBibName(bibName: string): void {
-  if (bibName.length < 5 || path.extname(bibName) !== ".bib") {
-    throw new Error(t("error.invalidBibName"));
+  if (!isValidBibName(bibName)) {
+    const value = bibName.replace(/\s+/g, " ").slice(0, 120) || "<empty>";
+    throw new Error(t("error.invalidBibName", { value }));
   }
 }
 
@@ -67,7 +72,7 @@ export function resolveBibPath(currentFileUri: vscode.Uri, bibNameTemplate: stri
   return resolved;
 }
 
-function isUriWithin(parent: vscode.Uri, child: vscode.Uri): boolean {
+export function isUriWithin(parent: vscode.Uri, child: vscode.Uri): boolean {
   if (parent.scheme !== child.scheme || parent.authority !== child.authority) {
     return false;
   }

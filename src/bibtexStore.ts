@@ -55,17 +55,24 @@ async function withBibFileLock<T>(bibPath: vscode.Uri, operation: () => Promise<
   }
 }
 
-async function atomicWriteBibText(bibPath: vscode.Uri, content: string): Promise<void> {
-  await parseBibtex(content);
+async function verifyBibTextWrite(bibPath: vscode.Uri, expectedContent: string): Promise<void> {
+  const writtenBytes = await vscode.workspace.fs.readFile(bibPath);
+  const writtenContent = Buffer.from(writtenBytes).toString("utf8");
+  await parseBibtex(writtenContent);
 
+  if (writtenContent !== expectedContent) {
+    throw new Error(t("error.bibliographyWriteVerificationFailed", { file: bibPath.path }));
+  }
+}
+
+async function atomicWriteLocalBibText(bibPath: vscode.Uri, content: string): Promise<void> {
   const tempName = `.${path.basename(bibPath.path)}.${process.pid}.${randomBytes(6).toString("hex")}.tmp`;
   const tempPath = vscode.Uri.joinPath(bibPath, "..", tempName);
 
   try {
     await vscode.workspace.fs.writeFile(tempPath, Buffer.from(content, "utf8"));
 
-    const writtenBytes = await vscode.workspace.fs.readFile(tempPath);
-    await parseBibtex(Buffer.from(writtenBytes).toString("utf8"));
+    await verifyBibTextWrite(tempPath, content);
 
     await vscode.workspace.fs.rename(tempPath, bibPath, { overwrite: true });
   } catch (error) {
@@ -76,6 +83,21 @@ async function atomicWriteBibText(bibPath: vscode.Uri, content: string): Promise
     }
     throw error;
   }
+}
+
+async function writeBibTextSafely(bibPath: vscode.Uri, content: string): Promise<void> {
+  await parseBibtex(content);
+
+  if (bibPath.scheme === "file") {
+    await atomicWriteLocalBibText(bibPath, content);
+    return;
+  }
+
+  // Virtual file-system providers do not necessarily support atomic overwrite
+  // through rename. Write through the provider's native update path and verify
+  // the committed content before reporting success.
+  await vscode.workspace.fs.writeFile(bibPath, Buffer.from(content, "utf8"));
+  await verifyBibTextWrite(bibPath, content);
 }
 
 function getEntryKey(entry: ParsedBibEntry): string {
@@ -156,14 +178,14 @@ export async function ensureBibliographyEntries(
       ? `${existingContent.trimEnd()}\n\n${newText}\n`
       : `${newText}\n`;
 
-    await atomicWriteBibText(bibPath, combined);
+    await writeBibTextSafely(bibPath, combined);
     return { appendedKeys };
   });
 }
 
 export async function writeBibliographyText(bibPath: vscode.Uri, content: string): Promise<void> {
   await withBibFileLock(bibPath, async () => {
-    await atomicWriteBibText(bibPath, `${content.trim()}\n`);
+    await writeBibTextSafely(bibPath, `${content.trim()}\n`);
   });
 }
 
@@ -176,7 +198,7 @@ export async function transformBibEntriesAtomically<T>(
     const entries = await parseBibtex(Buffer.from(fileBytes).toString("utf8"));
     const result = await transform(entries);
     if (result.serializedEntries) {
-      await atomicWriteBibText(bibPath, `${result.serializedEntries.join("\n").trim()}\n`);
+      await writeBibTextSafely(bibPath, `${result.serializedEntries.join("\n").trim()}\n`);
     }
     return result.value;
   });
