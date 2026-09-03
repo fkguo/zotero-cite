@@ -22,6 +22,7 @@ class MemoryUri {
 function createMemoryVscode(options = {}) {
   const files = new Map();
   const renameCalls = [];
+  const writeCalls = [];
   const fs = {
     async readFile(uri) {
       const value = files.get(uri.fsPath);
@@ -33,6 +34,7 @@ function createMemoryVscode(options = {}) {
       return Buffer.from(value);
     },
     async writeFile(uri, value) {
+      writeCalls.push({ uri, value: Buffer.from(value) });
       const writtenValue = options.transformWrite
         ? options.transformWrite(uri, Buffer.from(value))
         : Buffer.from(value);
@@ -59,7 +61,16 @@ function createMemoryVscode(options = {}) {
     vscode: { Uri: MemoryUri, env: { language: "en" }, workspace: { fs } },
     files,
     renameCalls,
+    writeCalls,
   };
+}
+
+function deferred() {
+  let resolve;
+  const promise = new Promise((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
 }
 
 function loadBibtexStore(vscode) {
@@ -140,10 +151,123 @@ suite("duplicate-safe BibTeX store", () => {
     const content = files.get(bibPath.fsPath).toString("utf8");
     assert.match(content, /@article\{Existing2020,/);
     assert.match(content, /@article\{Remote2026,/);
+    assert.strictEqual((content.match(/@article\{Existing2020,/g) || []).length, 1);
+    assert.strictEqual((content.match(/@article\{Remote2026,/g) || []).length, 1);
     assert.strictEqual(renameCalls.length, 0);
   });
 
-  test("rejects a virtual-workspace write whose read-back content differs", async function () {
+  test("preserves the fresh bibliography text exactly while appending", async function () {
+    this.timeout(3000);
+    const { vscode, files } = createMemoryVscode();
+    const { ensureBibliographyEntries } = loadBibtexStore(vscode);
+    const bibPath = new MemoryUri("/workspace/overleaf.bib", "overleaf-workshop");
+    const original = "% keep spacing  \n@article{Existing2020, title={Keep me}}\n  \n";
+    files.set(bibPath.fsPath, Buffer.from(original));
+
+    await ensureBibliographyEntries(
+      bibPath,
+      ["Remote2026"],
+      async () => "@article{Remote2026, title={Append only}}"
+    );
+
+    const content = files.get(bibPath.fsPath).toString("utf8");
+    assert.equal(content.slice(0, original.length), original);
+    assert.match(content, /@article\{Remote2026,/);
+    assert.match(content, /Append only/);
+  });
+
+  test("uses the fresh bibliography snapshot taken after Zotero finishes fetching", async function () {
+    this.timeout(3000);
+    const { vscode, files } = createMemoryVscode();
+    const { ensureBibliographyEntries } = loadBibtexStore(vscode);
+    const bibPath = new MemoryUri("/workspace/overleaf.bib", "overleaf-workshop");
+    const original = "@article{Existing2020, title={Keep me}}\n";
+    files.set(bibPath.fsPath, Buffer.from(original));
+
+    const fetchStarted = deferred();
+    const releaseFetch = deferred();
+    const operation = ensureBibliographyEntries(bibPath, ["Target2026"], async () => {
+      fetchStarted.resolve();
+      await releaseFetch.promise;
+      return "@article{Target2026, title={Fetched target}}";
+    });
+
+    await fetchStarted.promise;
+    files.set(
+      bibPath.fsPath,
+      Buffer.from(`${original}\n@article{Collaborator2025, title={Added remotely}}\n`)
+    );
+    releaseFetch.resolve();
+
+    const result = await operation;
+    assert.deepStrictEqual(result.appendedKeys, ["Target2026"]);
+    const content = files.get(bibPath.fsPath).toString("utf8");
+    assert.match(content, /@article\{Existing2020,/);
+    assert.match(content, /@article\{Collaborator2025,/);
+    assert.match(content, /@article\{Target2026,/);
+  });
+
+  test("rejects read-back that silently drops a percent comment", async function () {
+    this.timeout(3000);
+    const { vscode, files } = createMemoryVscode({
+      transformWrite(uri, value) {
+        return uri.scheme === "overleaf-workshop"
+          ? Buffer.from(
+              [
+                "@article{Existing2020, title={Keep me}}",
+                "@article{Target2026, title={Fetched target}}",
+              ].join("\n\n")
+            )
+          : value;
+      },
+    });
+    const { ensureBibliographyEntries } = loadBibtexStore(vscode);
+    const bibPath = new MemoryUri("/workspace/overleaf.bib", "overleaf-workshop");
+    files.set(
+      bibPath.fsPath,
+      Buffer.from("% preserve this provenance\n@article{Existing2020, title={Keep me}}\n")
+    );
+
+    await assert.rejects(
+      ensureBibliographyEntries(
+        bibPath,
+        ["Target2026"],
+        async () => "@article{Target2026, title={Fetched target}}"
+      ),
+      /could not be verified/
+    );
+  });
+
+  test("accepts a safe read-back superset added by a collaborative provider", async function () {
+    this.timeout(3000);
+    const { vscode, files } = createMemoryVscode({
+      transformWrite(uri, value) {
+        return uri.scheme === "overleaf-workshop"
+          ? Buffer.from(
+              "@article{DuringWrite2026, title={Rebased by provider}}\n\n" +
+                value.toString("utf8")
+            )
+          : value;
+      },
+    });
+    const { ensureBibliographyEntries } = loadBibtexStore(vscode);
+    const bibPath = new MemoryUri("/workspace/overleaf.bib", "overleaf-workshop");
+    files.set(bibPath.fsPath, Buffer.from("@article{Existing2020, title={Keep me}}\n"));
+
+    const result = await ensureBibliographyEntries(
+      bibPath,
+      ["Target2026"],
+      async () => "@article{Target2026, title={Fetched target}}"
+    );
+
+    assert.deepStrictEqual(result.appendedKeys, ["Target2026"]);
+    const content = files.get(bibPath.fsPath).toString("utf8");
+    assert.match(content, /@article\{Existing2020,/);
+    assert.match(content, /@article\{Target2026,/);
+    assert.match(content, /@article\{DuringWrite2026,/);
+  });
+
+  test("keeps exact read-back verification for virtual full-file replacements", async function () {
     this.timeout(3000);
     const { vscode } = createMemoryVscode({
       transformWrite(uri, value) {
@@ -159,5 +283,183 @@ suite("duplicate-safe BibTeX store", () => {
       writeBibliographyText(bibPath, "@article{Remote2026, title={Verify me}}"),
       /could not be verified/
     );
+  });
+
+  test("preserves an existing target added while Zotero is fetching", async function () {
+    this.timeout(3000);
+    const { vscode, files, writeCalls } = createMemoryVscode();
+    const { ensureBibliographyEntries } = loadBibtexStore(vscode);
+    const bibPath = new MemoryUri("/workspace/overleaf.bib", "overleaf-workshop");
+    const original = "@article{Existing2020, title={Keep me}}\n";
+    files.set(bibPath.fsPath, Buffer.from(original));
+
+    const fetchStarted = deferred();
+    const releaseFetch = deferred();
+    const operation = ensureBibliographyEntries(bibPath, ["Target2026"], async () => {
+      fetchStarted.resolve();
+      await releaseFetch.promise;
+      return "@article{Target2026, title={Fetched target}}";
+    });
+
+    await fetchStarted.promise;
+    const collaboratorContent = `${original}\n@article{Target2026, title={Fetched target}}\n`;
+    files.set(bibPath.fsPath, Buffer.from(collaboratorContent));
+    releaseFetch.resolve();
+
+    assert.deepStrictEqual(await operation, { appendedKeys: [] });
+    assert.strictEqual(writeCalls.length, 0);
+    assert.strictEqual(files.get(bibPath.fsPath).toString("utf8"), collaboratorContent);
+  });
+
+  test("fails closed when a collaborator adds a conflicting target during fetch", async function () {
+    this.timeout(3000);
+    const { vscode, files, writeCalls } = createMemoryVscode();
+    const { ensureBibliographyEntries } = loadBibtexStore(vscode);
+    const bibPath = new MemoryUri("/workspace/overleaf.bib", "overleaf-workshop");
+    const original = "@article{Existing2020, title={Keep me}}\n";
+    files.set(bibPath.fsPath, Buffer.from(original));
+
+    const fetchStarted = deferred();
+    const releaseFetch = deferred();
+    const operation = ensureBibliographyEntries(bibPath, ["Target2026"], async () => {
+      fetchStarted.resolve();
+      await releaseFetch.promise;
+      return "@article{Target2026, title={Fetched target}}";
+    });
+
+    await fetchStarted.promise;
+    const collaboratorContent =
+      `${original}\n@article{Target2026, title={Different collaborator target}}\n`;
+    files.set(bibPath.fsPath, Buffer.from(collaboratorContent));
+    releaseFetch.resolve();
+
+    await assert.rejects(operation, /could not be verified/);
+    assert.strictEqual(writeCalls.length, 0);
+    assert.strictEqual(files.get(bibPath.fsPath).toString("utf8"), collaboratorContent);
+  });
+
+  test("does not fetch when every requested key already exists", async function () {
+    this.timeout(3000);
+    const { vscode, files, writeCalls } = createMemoryVscode();
+    const { ensureBibliographyEntries } = loadBibtexStore(vscode);
+    const bibPath = new MemoryUri("/workspace/overleaf.bib", "overleaf-workshop");
+    const original = "@article{Already2025, title={Keep me}}\n";
+    files.set(bibPath.fsPath, Buffer.from(original));
+    let fetchCount = 0;
+
+    const result = await ensureBibliographyEntries(
+      bibPath,
+      ["Already2025"],
+      async () => {
+        fetchCount += 1;
+        throw new Error("source unavailable");
+      }
+    );
+
+    assert.deepStrictEqual(result, { appendedKeys: [] });
+    assert.strictEqual(fetchCount, 0);
+    assert.strictEqual(writeCalls.length, 0);
+    assert.strictEqual(files.get(bibPath.fsPath).toString("utf8"), original);
+  });
+
+  test("propagates a fetch failure when the fresh bibliography still lacks the key", async function () {
+    this.timeout(3000);
+    const { vscode, files, writeCalls } = createMemoryVscode();
+    const { ensureBibliographyEntries } = loadBibtexStore(vscode);
+    const bibPath = new MemoryUri("/workspace/overleaf.bib", "overleaf-workshop");
+    const original = "@article{Existing2025, title={Keep me}}\n";
+    files.set(bibPath.fsPath, Buffer.from(original));
+
+    await assert.rejects(
+      ensureBibliographyEntries(bibPath, ["Missing2026"], async () => {
+        throw new Error("source unavailable");
+      }),
+      /source unavailable/
+    );
+    assert.strictEqual(writeCalls.length, 0);
+    assert.strictEqual(files.get(bibPath.fsPath).toString("utf8"), original);
+  });
+
+  test("fails closed when fetch cannot verify a concurrently added target", async function () {
+    this.timeout(3000);
+    const { vscode, files, writeCalls } = createMemoryVscode();
+    const { ensureBibliographyEntries } = loadBibtexStore(vscode);
+    const bibPath = new MemoryUri("/workspace/overleaf.bib", "overleaf-workshop");
+    const original = "@article{Existing2025, title={Keep me}}\n";
+    files.set(bibPath.fsPath, Buffer.from(original));
+
+    const collaboratorContent =
+      `${original}\n@article{Target2026, title={Unverified collaborator target}}\n`;
+    await assert.rejects(
+      ensureBibliographyEntries(bibPath, ["Target2026"], async () => {
+        files.set(bibPath.fsPath, Buffer.from(collaboratorContent));
+        throw new Error("source unavailable");
+      }),
+      /could not be verified/
+    );
+    assert.strictEqual(writeCalls.length, 0);
+    assert.strictEqual(files.get(bibPath.fsPath).toString("utf8"), collaboratorContent);
+  });
+
+  test("adds only requested keys still absent from the fresh snapshot", async function () {
+    this.timeout(3000);
+    const { vscode, files, writeCalls } = createMemoryVscode();
+    const { ensureBibliographyEntries } = loadBibtexStore(vscode);
+    const bibPath = new MemoryUri("/workspace/overleaf.bib", "overleaf-workshop");
+    files.set(bibPath.fsPath, Buffer.from("@article{Already2025, title={Keep me}}\n"));
+
+    const result = await ensureBibliographyEntries(
+      bibPath,
+      ["Already2025", "New2026", "New2026"],
+      async () => "@article{New2026, title={Append me}}"
+    );
+
+    assert.deepStrictEqual(result.appendedKeys, ["New2026"]);
+    assert.strictEqual(writeCalls.length, 1);
+    const content = files.get(bibPath.fsPath).toString("utf8");
+    assert.match(content, /@article\{Already2025, title=\{Keep me\}\}/);
+    assert.strictEqual((content.match(/@article\{New2026,/g) || []).length, 1);
+  });
+
+  test("rejects a read-back that loses pre-write content or changes the target", async function () {
+    this.timeout(3000);
+    const cases = [
+      "@article{Target2026, title={Fetched target}}\n",
+      [
+        "@article{Existing2020, title={Keep me}}",
+        "@article{Target2026, title={Conflicting target}}",
+      ].join("\n\n"),
+      [
+        "@article{Existing2020, title={Keep me}}",
+        "@article{Target2026, title={Fetched target}}",
+        "@comment{Unkeyed concurrent content}",
+      ].join("\n\n"),
+      [
+        "@article{Existing2020, title={Keep me}}",
+        "@article{Target2026, title={Fetched target}}",
+        "@article{Concurrent2026, title={Duplicate one}}",
+        "@article{Concurrent2026, title={Duplicate two}}",
+      ].join("\n\n"),
+    ];
+
+    for (const readBack of cases) {
+      const { vscode, files } = createMemoryVscode({
+        transformWrite(uri, value) {
+          return uri.scheme === "overleaf-workshop" ? Buffer.from(readBack) : value;
+        },
+      });
+      const { ensureBibliographyEntries } = loadBibtexStore(vscode);
+      const bibPath = new MemoryUri("/workspace/overleaf.bib", "overleaf-workshop");
+      files.set(bibPath.fsPath, Buffer.from("@article{Existing2020, title={Keep me}}\n"));
+
+      await assert.rejects(
+        ensureBibliographyEntries(
+          bibPath,
+          ["Target2026"],
+          async () => "@article{Target2026, title={Fetched target}}"
+        ),
+        /could not be verified/
+      );
+    }
   });
 });
