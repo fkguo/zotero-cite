@@ -13,6 +13,7 @@ import { t } from "./i18n";
 
 const MAX_TEX_FILES = 200;
 const MAX_BIB_FILES = 200;
+const MAX_DISCOVERY_DIRECTORIES = 200;
 const EXCLUDED_DISCOVERY_DIRECTORIES = new Set([".git", "node_modules", ".output"]);
 const sessionBibliographySelections = new Map<string, string>();
 
@@ -61,11 +62,15 @@ function joinRelative(baseFile: vscode.Uri, relativePath: string): vscode.Uri {
 async function resolveInclude(
   rootUri: vscode.Uri,
   declaringUri: vscode.Uri,
-  includePath: string
+  includePath: string,
+  workspaceUri: vscode.Uri | undefined
 ): Promise<vscode.Uri | undefined> {
   const candidates = [joinRelative(rootUri, includePath), joinRelative(declaringUri, includePath)];
   const seen = new Set<string>();
   for (const candidate of candidates) {
+    if (workspaceUri && !isUriWithin(workspaceUri, candidate)) {
+      continue;
+    }
     const key = candidate.toString();
     if (seen.has(key)) {
       continue;
@@ -79,6 +84,7 @@ async function resolveInclude(
 }
 
 async function collectTexSources(rootUri: vscode.Uri): Promise<TexSource[]> {
+  const workspaceUri = vscode.workspace.getWorkspaceFolder(rootUri)?.uri;
   const sources: TexSource[] = [];
   const pending: vscode.Uri[] = [rootUri];
   const visited = new Set<string>();
@@ -101,7 +107,7 @@ async function collectTexSources(rootUri: vscode.Uri): Promise<TexSource[]> {
     sources.push({ content, uri });
 
     for (const includePath of extractLatexIncludes(content)) {
-      const includeUri = await resolveInclude(rootUri, uri, includePath);
+      const includeUri = await resolveInclude(rootUri, uri, includePath, workspaceUri);
       if (includeUri && !visited.has(includeUri.toString())) {
         pending.push(includeUri);
       }
@@ -129,19 +135,28 @@ async function findRootUris(document: vscode.TextDocument): Promise<vscode.Uri[]
     return [document.uri];
   }
 
-  if (!workspaceFolder) {
+  if (!workspaceFolder || !isUriWithin(workspaceFolder.uri, document.uri)) {
     return [document.uri];
   }
 
-  const pattern = new vscode.RelativePattern(workspaceFolder, "**/*.{tex,ltx,ctx}");
   let candidates: vscode.Uri[];
-  try {
-    candidates = await vscode.workspace.findFiles(pattern, "**/{.git,node_modules}/**", MAX_TEX_FILES);
-  } catch (_error) {
-    return [document.uri];
+  if (workspaceFolder.uri.scheme !== "file") {
+    // A FileSystemProvider does not imply a file search provider. findFiles can
+    // wait indefinitely for the latter, so use the filesystem directly here.
+    candidates = await discoverWorkspaceFiles(workspaceFolder.uri, isLatexUri, MAX_TEX_FILES);
+  } else {
+    const pattern = new vscode.RelativePattern(workspaceFolder, "**/*.{tex,ltx,ctx}");
+    try {
+      candidates = await vscode.workspace.findFiles(pattern, "**/{.git,node_modules}/**", MAX_TEX_FILES);
+    } catch (_error) {
+      return [document.uri];
+    }
   }
   const roots: vscode.Uri[] = [];
   for (const candidate of candidates) {
+    if (!isUriWithin(workspaceFolder.uri, candidate)) {
+      continue;
+    }
     const candidateContent = await tryReadText(candidate);
     if (!candidateContent || !containsLatexDocumentClass(candidateContent)) {
       continue;
@@ -185,20 +200,19 @@ export async function detectLatexBibliographyPaths(document: vscode.TextDocument
   return candidates;
 }
 
-async function discoverWorkspaceBibliographyPaths(document: vscode.TextDocument): Promise<vscode.Uri[]> {
-  const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
-  if (!workspaceFolder) {
-    return [];
-  }
-
+async function discoverWorkspaceFiles(
+  workspaceUri: vscode.Uri,
+  matches: (uri: vscode.Uri) => boolean,
+  maxFiles: number
+): Promise<vscode.Uri[]> {
   const candidates: vscode.Uri[] = [];
-  const pending: vscode.Uri[] = [workspaceFolder.uri];
+  const pending: vscode.Uri[] = [workspaceUri];
   const visited = new Set<string>();
 
   while (
     pending.length > 0 &&
-    candidates.length < MAX_BIB_FILES &&
-    visited.size < MAX_TEX_FILES
+    candidates.length < maxFiles &&
+    visited.size < MAX_DISCOVERY_DIRECTORIES
   ) {
     const directory = pending.shift();
     if (!directory) {
@@ -217,16 +231,26 @@ async function discoverWorkspaceBibliographyPaths(document: vscode.TextDocument)
       continue;
     }
 
-    entries.sort(([left], [right]) => left.localeCompare(right));
+    // Do not follow symlinks or non-child entries into another project. Cap
+    // queued directories as well as reads, including trees with no matches.
+    entries = entries.slice().sort(([left], [right]) => left.localeCompare(right));
     for (const [name, fileType] of entries) {
+      if (!name || name === "." || name === ".." || /[/\\]/.test(name) ||
+          (fileType & vscode.FileType.SymbolicLink) !== 0) {
+        continue;
+      }
       const uri = vscode.Uri.joinPath(directory, name);
+      if (!isUriWithin(workspaceUri, uri)) {
+        continue;
+      }
       if ((fileType & vscode.FileType.Directory) === vscode.FileType.Directory) {
-        if (!EXCLUDED_DISCOVERY_DIRECTORIES.has(name)) {
+        if (!EXCLUDED_DISCOVERY_DIRECTORIES.has(name) &&
+            visited.size + pending.length < MAX_DISCOVERY_DIRECTORIES) {
           pending.push(uri);
         }
-      } else if ((fileType & vscode.FileType.File) === vscode.FileType.File && isBibUri(uri)) {
+      } else if ((fileType & vscode.FileType.File) === vscode.FileType.File && matches(uri)) {
         candidates.push(uri);
-        if (candidates.length >= MAX_BIB_FILES) {
+        if (candidates.length >= maxFiles) {
           break;
         }
       }
@@ -234,6 +258,13 @@ async function discoverWorkspaceBibliographyPaths(document: vscode.TextDocument)
   }
 
   return candidates;
+}
+
+async function discoverWorkspaceBibliographyPaths(document: vscode.TextDocument): Promise<vscode.Uri[]> {
+  const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
+  return workspaceFolder && isUriWithin(workspaceFolder.uri, document.uri)
+    ? discoverWorkspaceFiles(workspaceFolder.uri, isBibUri, MAX_BIB_FILES)
+    : [];
 }
 
 function getSelectionCacheKey(document: vscode.TextDocument, candidates: vscode.Uri[]): string {

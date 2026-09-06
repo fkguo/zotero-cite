@@ -73,7 +73,7 @@ export function resolveBibPath(currentFileUri: vscode.Uri, bibNameTemplate: stri
 }
 
 export function isUriWithin(parent: vscode.Uri, child: vscode.Uri): boolean {
-  if (parent.scheme !== child.scheme || parent.authority !== child.authority) {
+  if (parent.scheme !== child.scheme || parent.authority !== child.authority || parent.query !== child.query) {
     return false;
   }
 
