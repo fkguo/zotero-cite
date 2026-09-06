@@ -14,7 +14,10 @@ async function main() {
 
 		// Download VS Code, unzip it and run the integration test
 		await runTests({
-			extensionDevelopmentPath,
+			extensionDevelopmentPath: [
+				extensionDevelopmentPath,
+				path.resolve(__dirname, './fixtures/latex-language'),
+			],
 			extensionTestsPath,
 			version: '1.61.2'
 		});

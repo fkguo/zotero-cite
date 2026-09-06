@@ -112,6 +112,8 @@ npm run sync:prs -- --remote upstream --limit 5
 - 支持自定义 LaTeX 引用命令 (Custom LaTeX Citation Command)
 在 LaTeX 编辑环境下，你可以通过修改配置项 `zotero-cite.latexCitationCommand` 来自定义引用时生成的命令字前缀（默认为 `cite`）。当你将其修改为其他命令（例如 `citet`、`citep`、`parencite` 或 `autocite`）时，该插件会自动使用该命令插入文献，并正确识别和解析文中已有的对应格式的引用。
 
+当光标紧接在 `\cite{Old}` 的右花括号之后时，选择新条目 `New` 会直接得到 `\cite{Old, New}`。此行为也适用于配置的自定义引用命令，保留星号和可选参数，并跳过已有的引用键。若光标位于两个紧邻的引用命令之间，会合并到前一个；若中间存在空格、换行或标点，则插入新的引用命令。
+
 ## 插件配置项
 - zotero-cite.defaultBibName：显式指定参考文献路径，并覆盖 LaTeX 自动检测。未显式设置且无法检测时使用 `ref.bib`。可以使用通配符：`${workspaceFolder}`、`${fileBasename}`、`${fileBasenameNoExtension}`、`${fileDirname}`、`${fileExtname}`。
 - zotero-cite.latexBibStyle：导出的LaTeX引用格式，应为`bibtex`或`biblatex`。默认值为`bibtex`。

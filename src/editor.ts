@@ -1,11 +1,13 @@
 import * as vscode from "vscode";
 
 import {
+  CitationSpan,
   extractLatexCitationKeys,
   extractMarkdownCitationKeys,
   findLatexCitationSpans,
   findMarkdownCitationSpans,
 } from "./citationParser";
+import { getMissingCiteKeys, uniqueCiteKeys } from "./citeKeys";
 import { getLatexCitationCommand } from "./config";
 import { t } from "./i18n";
 
@@ -70,22 +72,33 @@ export async function insertCiteKeys(
   keyList: string[],
   editor: vscode.TextEditor = getActiveEditor()
 ): Promise<void> {
-  const addLocation = getKeyEnvOffset(editor);
+  const citationSpan = getKeyEnvSpan(editor);
   const latexCitationCommand = getLatexCitationCommand();
 
   if (editor.document.languageId === "latex") {
-    if (addLocation === null) {
-      await insertTextAsync("\\" + latexCitationCommand + "{" + keyList.join(", ") + "}", -1, editor);
+    const keys = uniqueCiteKeys(keyList);
+    if (keys.length === 0) {
+      return;
+    }
+    if (citationSpan === null) {
+      await insertTextAsync("\\" + latexCitationCommand + "{" + keys.join(", ") + "}", -1, editor);
     } else {
-      await insertTextAsync(", " + keyList.join(", "), addLocation - 1, editor);
+      const citationText = editor.document.getText().slice(citationSpan.start, citationSpan.end);
+      const keyBlock = citationText.slice(citationText.lastIndexOf("{") + 1, -1);
+      const existingKeys = keyBlock.replace(/，/g, ",").split(",");
+      const missingKeys = getMissingCiteKeys(existingKeys, keys);
+      if (missingKeys.length > 0) {
+        const separator = !keyBlock.trim() || /[,，]\s*$/.test(keyBlock) ? "" : ", ";
+        await insertTextAsync(separator + missingKeys.join(", "), citationSpan.end - 1, editor);
+      }
     }
   }
 
   if (isMarkdownLikeDocument(editor.document)) {
-    if (addLocation === null) {
+    if (citationSpan === null) {
       await insertTextAsync("[" + keyList.map((v) => "@" + v).join("; ") + "]", -1, editor);
     } else {
-      await insertTextAsync("; " + keyList.map((v) => "@" + v).join("; "), addLocation - 1, editor);
+      await insertTextAsync("; " + keyList.map((v) => "@" + v).join("; "), citationSpan.end - 1, editor);
     }
   }
 }
@@ -99,34 +112,46 @@ export function makeId(length: number): string {
   return result;
 }
 
-function getKeyEnvOffset(editor: vscode.TextEditor): number | null {
+function getKeyEnvSpan(editor: vscode.TextEditor): CitationSpan | null {
   if (!editor.selection.isEmpty) {
     return null;
   }
 
   const cursorLocation = editor.document.offsetAt(editor.selection.active);
   const content = editor.document.getText();
+  const isLatex = editor.document.languageId === "latex";
   const matches = isMarkdownLikeDocument(editor.document)
     ? findMarkdownCitationSpans(content)
-    : editor.document.languageId === "latex"
-      ? findLatexCitationSpans(content, getLatexCitationCommand())
+    : isLatex
+      ? Array.from(new Set([getLatexCitationCommand(), "cite"]))
+        .flatMap((command) => findLatexCitationSpans(content, command))
       : [];
-  let bestEndIndex: number | null = null;
+
+  // At \\cite{a}|\\cite{b}, prefer the citation immediately before the cursor.
+  // Do not cross whitespace or punctuation; keep Markdown's existing boundary behavior.
+  if (isLatex) {
+    const precedingCitation = matches.find((match) => match.end === cursorLocation);
+    if (precedingCitation) {
+      return precedingCitation;
+    }
+  }
+
+  let bestSpan: CitationSpan | null = null;
   let bestRangeLength = Number.POSITIVE_INFINITY;
 
   for (const match of matches) {
     const startIndex = match.start;
     const endIndex = match.end;
 
-    // Use [start, end) to avoid boundary ambiguities when citations are adjacent.
+    // For other cursor positions, keep the existing containing-span behavior.
     if (cursorLocation >= startIndex && cursorLocation < endIndex) {
       const rangeLength = endIndex - startIndex;
       if (rangeLength < bestRangeLength) {
         bestRangeLength = rangeLength;
-        bestEndIndex = endIndex;
+        bestSpan = match;
       }
     }
   }
 
-  return bestEndIndex;
+  return bestSpan;
 }

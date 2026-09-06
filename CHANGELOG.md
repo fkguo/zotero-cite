@@ -6,6 +6,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
+- Merge newly selected citation keys into the preceding LaTeX citation when the cursor is immediately after its closing brace, skipping existing keys and preserving optional arguments.
 - Add a selectable BibTeX source: Better BibTeX or strict INSPIRE-HEP retrieval through zotero-inspire's authenticated read-only local API.
 - Discover the zotero-inspire read token automatically from standard local Zotero profiles, cache a verified token in editor Secret Storage, and require no manual token setup.
 - Restrict the zotero-inspire endpoint to loopback HTTP, validate API v1 responses and rewritten entry keys, and reject non-INSPIRE fallback results.
