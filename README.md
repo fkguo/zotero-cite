@@ -1,154 +1,109 @@
-在markdown、pandoc（.md后缀）、quarto（.qmd后缀）、R Markdown（.rmd后缀）、MDX（.mdx后缀）以及latex文件的编写过程中，如果想要实现类似ms word文件的编辑过程，边插入边更新bib文件。或者想将当前文件的`key`列表，导出最终的bib文件，那么该插件就非常适合你。
+# Zotero Cite
 
-## 虚拟工作区与 Overleaf Workshop
+在 VS Code 或 Cursor 中从 Zotero 选择文献、插入引用，并更新参考文献文件。支持 LaTeX、Markdown、Pandoc、Quarto（`.qmd`）、R Markdown（`.rmd`）和 MDX（`.mdx`），也支持 Overleaf Workshop 打开的项目。
 
-Zotero Cite 支持通过 VS Code 虚拟文件系统打开的项目，包括 Overleaf Workshop。对于本地文件，插件使用临时文件和原子替换来更新 `.bib`；对于虚拟工作区，插件使用文件系统提供方的原生写入接口，并在完成后重新读取和验证 BibTeX 内容。
+## 安装
 
-使用虚拟工作区时请注意：
+1. 下载 [zotero-cite-0.10.1.vsix](https://gitee.com/fkguo/zotero-cite/raw/v0.10.1/releases/zotero-cite-0.10.1.vsix)；也可进入[安装包目录](https://gitee.com/fkguo/zotero-cite/tree/v0.10.1/releases)选择文件并下载。不要选择源码压缩包。
+2. 在 VS Code 或 Cursor 的扩展面板中打开右上角菜单，选择 **Install from VSIX…（从 VSIX 安装）**，然后选择下载的文件。
+3. 安装完成后，运行命令面板中的 **Developer: Reload Window（重新加载窗口）**。
 
-- 工作区必须处于受信任状态，否则 Zotero Cite 会按安全策略被禁用。
-- Zotero 与 Better BibTeX 仍需运行在本机，并允许编辑器访问所配置的 JSON-RPC/CAYW 地址。
-- 远程保存的原子性和并发合并行为由相应的虚拟文件系统提供方决定。
+使用前请启动本机 Zotero，并启用 Better BibTeX。编辑器需为 VS Code 1.61 或更高版本，或兼容的 Cursor 版本。
 
-## 自动检测 LaTeX 参考文献文件
+## 快速上手
 
-在未显式设置 `zotero-cite.defaultBibName` 时，Zotero Cite 会从 LaTeX 项目中自动检测参考文献文件，支持：
+1. 打开项目文件夹，或通过 Overleaf Workshop 打开项目；确认工作区受信任且文件可写。
+2. 打开并保存要编辑的文档，将光标放在需要引用的位置。
+3. 点击编辑器右上角的 Zotero Cite 按钮，或运行命令 **Zotero Cite：引用并更新文献 / Cite + Bibliography**。
+4. 在 Zotero 选择器中选中文献并确认。LaTeX 文档会插入引用并补充 `.bib` 中缺失的条目；Markdown 类文档会插入脚注引用及文献内容。
 
-- BibTeX 的 `\bibliography{refs}` 和逗号分隔的多个文件。
-- biblatex 的 `\addbibresource`、`\addglobalbib` 与 `\addsectionbib`。
+如果只想插入引用而不更新 `.bib`，使用 **Add Citation for Pandoc/LaTeX**；如果希望在 Markdown 中使用 `[@key]` 并更新 `.bib`，使用 **Cite and Create Bibliography for Pandoc/LaTeX**。
+
+扩展没有预设 Option+Z 快捷键。如需使用，可在编辑器的“键盘快捷方式”中找到 **Zotero Cite：引用并更新文献** 并绑定。
+
+## 自动选择 LaTeX 参考文献文件
+
+通常不需要设置 `.bib` 路径。插件可以识别：
+
+- `\bibliography{refs}`，包括逗号分隔的多个文件。
+- `\addbibresource{refs.bib}`、`\addglobalbib` 和 `\addsectionbib`。
 - `% !TeX root = main.tex` 根文件指令。
-- 通过 `\input`、`\include` 与 `\subfile` 引入的项目文件。
+- 通过 `\input`、`\include` 和 `\subfile` 引入的项目文件。
 
-如果项目引用多个 `.bib` 文件，插件会要求选择，并在候选集合不变时记住本次编辑器会话中的选择。用户显式设置的 `zotero-cite.defaultBibName` 始终优先于自动检测；无法从 LaTeX 声明静态解析路径时，插件还会扫描当前工作区中已有的 `.bib` 文件：只有一个时自动采用，存在多个时要求选择。声明和已有文件均未检测到时才回退到 `ref.bib`。空字符串配置等同于未显式设置。
+检测到多个 `.bib` 文件时会要求选择，并在本次编辑器会话中记住选择。无法从 LaTeX 声明确定路径时，会查找工作区已有的 `.bib` 文件；仍未找到时使用 `ref.bib`。
+
+如需固定使用某个文件，设置 `zotero-cite.defaultBibName`，例如 `references/refs.bib`。显式设置优先于自动检测；删除该设置或设为空字符串即可恢复自动检测。本地项目和 Overleaf Workshop 项目均可使用这一功能。
+
+## 合并到已有引用
+
+光标紧接在 `\cite{Old}` 的右花括号之后时，选择 `New` 会得到：
+
+```latex
+\cite{Old, New}
+```
+
+已有的引用键会跳过，不会重复添加。光标位于引用命令内部时同样可以追加；位于两个紧邻引用命令之间时，会追加到前一个。若中间隔着空格、换行或标点，则插入新的引用命令。
+
+可以通过 `zotero-cite.latexCitationCommand` 设置新引用使用的命令，例如 `citep`、`citet`、`parencite` 或 `autocite`，不需要填写前导反斜杠。合并支持所配置的命令及普通 `\cite`，并保留星号和可选参数，例如：
+
+```latex
+\citep[see][p. 3]{Old, New}
+```
 
 ## 选择 BibTeX 来源
 
-`zotero-cite.bibtexSource` 可以选择写入 `.bib` 文件的来源：
+通过 `zotero-cite.bibtexSource` 选择写入 `.bib` 的文献来源：
 
-- `better-bibtex`（默认）：通过 Better BibTeX JSON-RPC 导出。
-- `zotero-inspire`：通过 zotero-inspire 的本机只读接口从 INSPIRE-HEP 获取。
+- `better-bibtex`（默认）：使用 Zotero 中的文献数据，由 Better BibTeX 导出。
+- `zotero-inspire`：从 INSPIRE-HEP 获取 BibTeX。使用前需在 Zotero 中启用支持 BibTeX 接口的 zotero-inspire 插件。
 
-无论选择哪一种来源，Zotero 条目选择器仍由 Better BibTeX CAYW 提供。来源设置影响 BibTeX/BibLaTeX 文件的整体导出、自动补充缺失条目和更新已有条目；Markdown 脚注式格式化文献仍使用 Better BibTeX。
+这一设置适用于导出 `.bib`、补充缺失条目和更新已有条目。两种来源均需 Better BibTeX 提供文献选择器；Markdown 脚注式文献仍使用 Better BibTeX。
 
-首次使用时，只需在 Zotero 中启用包含只读 BibTeX API 的 zotero-inspire，并将 `zotero-cite.bibtexSource` 设为 `zotero-inspire`。Zotero Cite 会自动定位当前操作系统中的 Zotero profiles，从 `prefs.js` 读取 zotero-inspire 专用只读令牌，并把已验证令牌缓存到 VS Code/Cursor Secret Storage；无需复制令牌，也不会把令牌写入项目设置。
+选择 `zotero-inspire` 后，无法从 INSPIRE-HEP 获取条目时，本次新增引用会取消并提示原因。更新已有 `.bib` 时，无法获取的条目会保留，原因可在 Zotero Cite 输出面板查看。
 
-自动发现支持 macOS、Windows、常规 Linux 安装以及 Linux Flatpak 的标准 Zotero profile 位置。若切换 Zotero profile 或插件重新生成令牌，客户端会重新检查本机 profiles 并更新缓存。
+## 常用命令
 
-默认接口为 `http://127.0.0.1:23119/connector/zinspireBibtex`。客户端只允许数值型本机回环地址、HTTP 协议和固定接口路径，自动发现的只读令牌不会发送给远端服务。
+可在命令面板中搜索 `Zotero Cite`。命令名称会随编辑器语言显示为中文或英文。
 
-选择 `zotero-inspire` 后，插件只接受接口明确标记为 `INSPIRE-HEP` 的 BibTeX。若 INSPIRE 条目缺失、引用键有歧义，或者服务端改用 Better BibTeX fallback，本次新增操作会整体失败且不会插入 `\cite{...}`；更新已有 `.bib` 时则保留无法从 INSPIRE 获取的原始条目，并在输出面板记录原因。
+| 命令 | 用途 |
+| --- | --- |
+| Cite + Bibliography | 根据文档类型插入引用并更新文献；LaTeX 使用 `.bib`，Markdown 类文档使用脚注。 |
+| Add Citation for Pandoc/LaTeX | 仅插入引用，不更新参考文献文件。 |
+| Cite and Create Bibliography for Pandoc/LaTeX | 插入 LaTeX 或 Pandoc 引用，并补充 `.bib` 中缺失的条目。 |
+| Export BibLaTeX | 导出当前文档引用的文献，提示输入目标 `.bib` 文件名；已有目标文件会被整体替换。 |
+| Update BibTeX Entries | 按所选 BibTeX 来源更新条目；打开 `.bib` 时更新当前文件，在 LaTeX 中运行时使用自动检测或显式指定的路径。未匹配条目保留。 |
+| Cite Hyperlink | 在 Markdown 类文档中，将剪贴板中的链接插入为脚注。 |
 
-## 自动融合远程 Pull Requests
+## 常用设置
 
-项目里新增了一个自动合并脚本，可按顺序抓取并合并远程 PR 引用到当前分支。
+在编辑器设置中搜索 `zotero-cite`：
 
-前提条件：
-- 当前目录是 git 仓库。
-- 远程仓库暴露 PR 引用（默认使用 `refs/pull/*/head`，GitHub/Gitee 常见）。
-- 建议在工作区干净（无未提交变更）时运行。
+- `defaultBibName`：覆盖自动检测的 `.bib` 路径。支持 `${workspaceFolder}`、`${fileBasename}`、`${fileBasenameNoExtension}`、`${fileDirname}` 和 `${fileExtname}` 占位符。
+- `latexCitationCommand`：LaTeX 引用命令，默认为 `cite`。
+- `latexBibStyle`：Better BibTeX 导出格式，可设为 `bibtex` 或 `biblatex`，默认为 `bibtex`。
+- `bibtexSource`：BibTeX 来源，默认为 `better-bibtex`。
+- `excludedBibFields`：Better BibTeX 导出时排除的字段，默认排除 `file` 和 `annotation`。
+- `showMarkdownCitationHoverPreview`：显示 Markdown 引用的悬浮预览，默认开启。
+- `showMarkdownCitationCompletion`：显示 Markdown 引用建议，默认开启。
 
-常用命令：
+## 常见问题
 
-```bash
-# 仅预览将要合并的 PR，不执行 merge
-npm run sync:prs:dry
+**无法打开 Zotero 选择器**
 
-# 实际执行自动合并
-npm run sync:prs
+确认 Zotero 已启动、Better BibTeX 已启用。如果曾修改 `zotero-cite.caywUrl` 或 `zotero-cite.jsonRpcUrl`，请检查地址是否正确。选择文献后需在 Zotero 选择器中确认。
 
-# 指定远程并限制最多合并 5 个 PR
-npm run sync:prs -- --remote upstream --limit 5
-```
+**没有自动选择预期的 `.bib` 文件**
 
-冲突处理：
-- 当某个 PR 合并冲突时，脚本会尝试执行 `git merge --abort` 保持工作区整洁。
-- 默认遇到冲突即停止；如需继续处理后续 PR，可加 `--keep-going`。
+检查是否仍显式设置了 `defaultBibName`，并确认 LaTeX 中声明的路径正确。复杂的宏展开路径可能无法自动识别，此时可显式指定 `.bib` 路径。
 
+**Overleaf Workshop 中无法更新 `.bib`**
 
+确认项目连接正常、工作区受信任且当前账号有编辑权限。Zotero 需运行在编辑器所在电脑上。遇到保存错误时查看 Zotero Cite 输出面板；不要反复重试覆盖他人正在编辑的内容。
 
-## issue与代码提交
+**安装更新后仍是旧行为**
 
-由于本人不经常使用`latex`以及`markdown`，只在写论文的时候才会用，如果您喜欢使用该插件，但对其中的一些细节有额外的需求，您可以写issue，另外对于本身有一些编程能力的用户，非常欢迎提交自己的代码（请您务必认真自己测试提交的代码！因为我实在有点懒惰，不会仔细review代码）。
+运行 **Developer: Reload Window**，并在扩展详情页确认已安装的版本。
 
+## 更新记录与反馈
 
-## 插件功能
-
-- Zotero Cite: Export BibLatex
-
-查询当前编辑的markdown、pandoc或者latex文档，根据引用的key，导出引用至bib文件。
-
-
-![export bibliography.gif](https://s2.loli.net/2022/02/07/by74icsMBRuVfO9.gif)
-
-- Zotero Cite: Add Citation for Pandoc/Latex
-
-如果你想在pandoc以及latex文档的书写过程中，希望插入citation，但是不想更新bib文件，那么这个功能比较适合你。
-
-
-![add citation for pandoc and latex.gif](https://s2.loli.net/2022/02/07/ZQSoTM69wdYAB4l.gif)
-
-- Zotero Cite: Cite and Create Bibliography for Pandoc/LaTeX
-
-如果你想在pandoc以及latex文档的书写过程中，希望插入citation的同时更新bib文件，那么这个功能比较适合你。
-
-
-![add citation and add bibliography for pandoc and latex.gif](https://s2.loli.net/2022/02/07/vefSHTJWnG6DAt7.gif)
-
-- Zotero Cite: Cite and Create Bibliography for Markdown
-
-如果你想在markdown / quarto（.qmd）/ R Markdown（.rmd）/ MDX（.mdx）文档的书写过程中，希望插入citation的同时更新脚注，那么这个功能比较适合你。
-
-
-![add citation and add bibliography for markdown.gif](https://s2.loli.net/2022/02/07/IcuWZpy7zLJFUsY.gif)
-
-
-- Zotero Cite: Cite Hyperlink
-
-![VSCODE插入超链接引用.gif](https://s2.loli.net/2022/05/04/eMSAvoIQC9gViTG.gif)
-
-- Zotero Cite: Update BibTex Entries
-从 Zotero 更新 defaultBibName 路径对应bib文件的所有项，存在未匹配项则不修改原始记录。
-
-- 支持自定义 LaTeX 引用命令 (Custom LaTeX Citation Command)
-在 LaTeX 编辑环境下，你可以通过修改配置项 `zotero-cite.latexCitationCommand` 来自定义引用时生成的命令字前缀（默认为 `cite`）。当你将其修改为其他命令（例如 `citet`、`citep`、`parencite` 或 `autocite`）时，该插件会自动使用该命令插入文献，并正确识别和解析文中已有的对应格式的引用。
-
-当光标紧接在 `\cite{Old}` 的右花括号之后时，选择新条目 `New` 会直接得到 `\cite{Old, New}`。此行为也适用于配置的自定义引用命令，保留星号和可选参数，并跳过已有的引用键。若光标位于两个紧邻的引用命令之间，会合并到前一个；若中间存在空格、换行或标点，则插入新的引用命令。
-
-## 插件配置项
-- zotero-cite.defaultBibName：显式指定参考文献路径，并覆盖 LaTeX 自动检测。未显式设置且无法检测时使用 `ref.bib`。可以使用通配符：`${workspaceFolder}`、`${fileBasename}`、`${fileBasenameNoExtension}`、`${fileDirname}`、`${fileExtname}`。
-- zotero-cite.latexBibStyle：导出的LaTeX引用格式，应为`bibtex`或`biblatex`。默认值为`bibtex`。
-- zotero-cite.latexCitationCommand：LaTeX 引用命令名，不需要包含前导反斜杠。默认值为`cite`，例如可改为`citet`或`citep`。
-- zotero-cite.bibtexSource：写入 `.bib` 文件的来源，可选 `better-bibtex`（默认）或 `zotero-inspire`。
-- zotero-cite.zoteroInspireBibtexUrl：zotero-inspire 本机只读 BibTeX 接口。仅支持本机回环 HTTP 地址和固定路径 `/connector/zinspireBibtex`。
-- zotero-cite.showMarkdownCitationHoverPreview：是否显示 Markdown 中 `[^key]` 与 `@key` 的 hover 预览。默认值为 `true`。
-- zotero-cite.showMarkdownCitationCompletion：是否显示 Markdown 中 `[^` 与 `@` 的引用建议列表。默认值为 `true`。
-
-
-## 修改历史
-
-- 2021-11-01：创建了zotero-export插件并增加了文件名输入的功能。增加when支持，只允许在markdown或者latex环境下激发命令。
-- 2021-11-02：将zotero-export插件更名为export-cite，优化bibliography导出到文件的功能，使其支持latex环境。同时添加了`zotero-cite.citeBibliography`以及`zotero-cite.citeMarkdownBibliography`两个命令，使其可以在插入引用的同时，将bibliography插入到默认的文件中。
-- 2022-02-06： 对zotero-cite进行了全面的修改，使其可以支持markdown、pandoc以及latex环境的引用插入。可以智能的识别当前鼠标的位置是否在引用环境中，从而决定是应该直接插入，还是采用新增的方式插入引用。
-- 2022-02-07：优化pandoc以及latex文件的插入引用函数，消耗资源更少。
-- 2022-05-04：添加了markdown环境下，超链接的引用功能。
-- 2024-04-07：由于<https://gitee.com/MichiyamaKaren>用户的贡献，插件支持最新的`Better BibTex for Zotero`插件。
-- 2024-04-22: 由于<https://gitee.com/fkguo>用户的贡献，插件的`citekey`支持"-"和":"等特殊符号。
-- 2024-04-22: 由于<https://gitee.com/awwaawwa>用户的贡献，插件的支持多个分组。
-- 2024-06-13: 由于<https://gitee.com/cesaryuan>用户贡献，在使用`exportBibLatex`的时候，插件支持`\citet`和`\citep`命令。
-- 2024-07-09: 由于<https://gitee.com/aasll>用户的贡献，插件支持自定义ref文件的位置，并支持使用自定义通配符。
-- 2026-02-02: 由于<https://gitee.com/aasll>用户的贡献，在md和tex文件右上角添加了小按钮来插入引用。
-- 2026-02-04: 由于<https://gitee.com/aasll>用户贡献，修复了添加引用无法检测已经添加进来的重复条目的问题，修复了'update biblatex entries'功能，并增强了返回结果的体验。
-- 2026-04-26：增加了对pandoc-crossref格式的图片，表格之类的引用预览。
-- 2026-05-11: 由于<https://gitee.com/aasll>用户贡献，增加自定义引用标签功能，用户现在可以自定义'\cite'或别的什么命令了。
-
-### 2026-04-20：重要更新
-
-- 将js插件转换成ts，模块化，方便准确的代码提示。
-- 增加了状态栏的command picker按钮，点击可以显示命令列表。
-- 增加md文件中尖角引用和@引用的预览和建议列表功能，并做成可配置项（显示和隐藏）。
-- 增加了json-rpc字段的排除配置（有时候一些不需要的字段不想显示在bib文件中）。
-
-## 教学视频
-
-链接: https://pan.baidu.com/s/10FE43K7ZR4LhHv19_5qrnw?pwd=bjf6 提取码: bjf6 复制这段内容后打开百度网盘手机App，操作更方便哦 
---来自百度网盘超级会员v9的分享
+完整更新记录见 [CHANGELOG](CHANGELOG.md)。问题与建议请提交到[本仓库 Issues](https://gitee.com/fkguo/zotero-cite/issues)，附上扩展版本、编辑器及 Zotero 版本、复现步骤和错误信息。

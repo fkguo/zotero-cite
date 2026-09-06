@@ -16,5 +16,6 @@ tsconfig.json
 **/.eslintrc.json
 **/*SFConflict*
 *.vsix
+releases/**
 images/*.jpg
 images/*.psd
