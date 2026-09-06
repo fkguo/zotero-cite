@@ -4,7 +4,7 @@
 
 ## 安装
 
-1. 下载 [zotero-cite-0.10.1.vsix](https://gitee.com/fkguo/zotero-cite/raw/v0.10.1/releases/zotero-cite-0.10.1.vsix)；也可进入[安装包目录](https://gitee.com/fkguo/zotero-cite/tree/v0.10.1/releases)选择文件并下载。不要选择源码压缩包。
+1. 下载 [zotero-cite-0.11.0.vsix](https://gitee.com/fkguo/zotero-cite/releases/download/v0.11.0/zotero-cite-0.11.0.vsix)；也可进入[发行版页面](https://gitee.com/fkguo/zotero-cite/releases/tag/v0.11.0)下载附件。不要选择源码压缩包。
 2. 在 VS Code 或 Cursor 的扩展面板中打开右上角菜单，选择 **Install from VSIX…（从 VSIX 安装）**，然后选择下载的文件。
 3. 安装完成后，运行命令面板中的 **Developer: Reload Window（重新加载窗口）**。
 

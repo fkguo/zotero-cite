@@ -4,6 +4,11 @@ All notable changes to the "zotero-cite" extension will be documented in this fi
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.11.0] - 2026-09-06
+
+- Provide a Gitee Release download for installation in VS Code and Cursor.
+- Retain the functionality and settings of 0.10.1, including selectable INSPIRE-HEP BibTeX retrieval and merging adjacent LaTeX citations.
+
 ## [0.10.1] - 2026-09-06
 
 - Merge newly selected citation keys into the preceding LaTeX citation when the cursor is immediately after its closing brace, skipping existing keys and preserving optional arguments.
