@@ -4,6 +4,12 @@ All notable changes to the "zotero-cite" extension will be documented in this fi
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.11.1] - 2026-09-07
+
+- Fix citation selection stalling in chapter TeX files in Overleaf Workshop and other virtual projects without a file search provider.
+- Discover virtual project roots through bounded directory traversal while preserving URI identity and workspace boundaries.
+- Preserve local project discovery, explicit bibliography settings, TeX root directives, bibliography selection, and collaborative bibliography write protections.
+
 ## [0.11.0] - 2026-09-06
 
 - Provide a Gitee Release download for installation in VS Code and Cursor.
