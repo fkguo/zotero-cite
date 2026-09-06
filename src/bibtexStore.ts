@@ -55,12 +55,107 @@ async function withBibFileLock<T>(bibPath: vscode.Uri, operation: () => Promise<
   }
 }
 
-async function verifyBibTextWrite(bibPath: vscode.Uri, expectedContent: string): Promise<void> {
+function canonicalizeBibValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(canonicalizeBibValue);
+  }
+
+  if (value && typeof value === "object") {
+    const result: Record<string, unknown> = {};
+    for (const key of Object.keys(value as Record<string, unknown>).sort()) {
+      result[key] = canonicalizeBibValue((value as Record<string, unknown>)[key]);
+    }
+    return result;
+  }
+
+  return value;
+}
+
+function getEntryFingerprint(entry: ParsedBibEntry): string {
+  return JSON.stringify(canonicalizeBibValue(entry));
+}
+
+function getFingerprintCounts(entries: ParsedBibEntry[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const entry of entries) {
+    const fingerprint = getEntryFingerprint(entry);
+    counts.set(fingerprint, (counts.get(fingerprint) || 0) + 1);
+  }
+  return counts;
+}
+
+function getKeyedEntryFingerprints(entries: ParsedBibEntry[]): Map<string, string[]> {
+  const keyedEntries = new Map<string, string[]>();
+  for (const entry of entries) {
+    const key = getEntryKey(entry);
+    if (!key) {
+      continue;
+    }
+    const fingerprints = keyedEntries.get(key) || [];
+    fingerprints.push(getEntryFingerprint(entry));
+    keyedEntries.set(key, fingerprints);
+  }
+  return keyedEntries;
+}
+
+function isOrderedSubsequence(expected: string, actual: string): boolean {
+  let expectedIndex = 0;
+  for (let actualIndex = 0; actualIndex < actual.length && expectedIndex < expected.length; actualIndex += 1) {
+    if (actual[actualIndex] === expected[expectedIndex]) {
+      expectedIndex += 1;
+    }
+  }
+  return expectedIndex === expected.length;
+}
+
+function isSafeSemanticSuperset(
+  expectedEntries: ParsedBibEntry[],
+  writtenEntries: ParsedBibEntry[]
+): boolean {
+  const remainingExpected = getFingerprintCounts(expectedEntries);
+  const expectedKeys = new Set(expectedEntries.map(getEntryKey).filter((key) => key.length > 0));
+  const additionalKeys = new Set<string>();
+
+  for (const entry of writtenEntries) {
+    const fingerprint = getEntryFingerprint(entry);
+    const remainingCount = remainingExpected.get(fingerprint) || 0;
+    if (remainingCount > 0) {
+      remainingExpected.set(fingerprint, remainingCount - 1);
+      continue;
+    }
+
+    const key = getEntryKey(entry);
+    if (!key || expectedKeys.has(key) || additionalKeys.has(key)) {
+      return false;
+    }
+    additionalKeys.add(key);
+  }
+
+  return (
+    additionalKeys.size > 0 &&
+    Array.from(remainingExpected.values()).every((remainingCount) => remainingCount === 0)
+  );
+}
+
+async function verifyBibTextWrite(
+  bibPath: vscode.Uri,
+  expectedContent: string,
+  allowSemanticSuperset = false
+): Promise<void> {
   const writtenBytes = await vscode.workspace.fs.readFile(bibPath);
   const writtenContent = Buffer.from(writtenBytes).toString("utf8");
-  await parseBibtex(writtenContent);
+  const writtenEntries = await parseBibtex(writtenContent);
 
-  if (writtenContent !== expectedContent) {
+  if (writtenContent === expectedContent) {
+    return;
+  }
+
+  const expectedEntries = allowSemanticSuperset ? await parseBibtex(expectedContent) : [];
+  if (
+    !allowSemanticSuperset ||
+    !isOrderedSubsequence(expectedContent, writtenContent) ||
+    !isSafeSemanticSuperset(expectedEntries, writtenEntries)
+  ) {
     throw new Error(t("error.bibliographyWriteVerificationFailed", { file: bibPath.path }));
   }
 }
@@ -85,7 +180,11 @@ async function atomicWriteLocalBibText(bibPath: vscode.Uri, content: string): Pr
   }
 }
 
-async function writeBibTextSafely(bibPath: vscode.Uri, content: string): Promise<void> {
+async function writeBibTextSafely(
+  bibPath: vscode.Uri,
+  content: string,
+  allowSemanticSuperset = false
+): Promise<void> {
   await parseBibtex(content);
 
   if (bibPath.scheme === "file") {
@@ -97,7 +196,7 @@ async function writeBibTextSafely(bibPath: vscode.Uri, content: string): Promise
   // through rename. Write through the provider's native update path and verify
   // the committed content before reporting success.
   await vscode.workspace.fs.writeFile(bibPath, Buffer.from(content, "utf8"));
-  await verifyBibTextWrite(bibPath, content);
+  await verifyBibTextWrite(bibPath, content, allowSemanticSuperset);
 }
 
 function getEntryKey(entry: ParsedBibEntry): string {
@@ -143,28 +242,65 @@ export async function ensureBibliographyEntries(
       return { appendedKeys: [] };
     }
 
-    const fetchedText = await fetchBibliography(missingKeys);
-    if (!fetchedText.trim()) {
-      throw new Error(t("error.emptyBibliographyFromZotero"));
+    let fetchedText = "";
+    let fetchError: unknown;
+    try {
+      fetchedText = await fetchBibliography(missingKeys);
+    } catch (error) {
+      // A source failure may concern a key which a collaborator added while
+      // the request was in flight. Recheck the file before surfacing it.
+      fetchError = error;
     }
-
-    const fetchedEntries = await parseBibtex(fetchedText);
-    const requested = new Set(missingKeys);
+    const fetchedEntries = fetchedText.trim() ? await parseBibtex(fetchedText) : [];
+    const requestedSet = new Set(missingKeys);
     const fetchedByKey = new Map<string, ParsedBibEntry>();
 
     for (const entry of fetchedEntries) {
       const key = getEntryKey(entry);
-      if (key && requested.has(key) && !fetchedByKey.has(key)) {
+      if (key && requestedSet.has(key) && !fetchedByKey.has(key)) {
         fetchedByKey.set(key, entry);
       }
     }
 
-    const absentKeys = missingKeys.filter((key) => !fetchedByKey.has(key));
+    // Fetching may take long enough for a collaborator to update the file. Base
+    // the full-file write on this fresh snapshot rather than the initial read.
+    const latestContent = (await readBibTextIfExists(bibPath)) || "";
+    const latestEntries = latestContent.trim() ? await parseBibtex(latestContent) : [];
+    const latestByKey = getKeyedEntryFingerprints(latestEntries);
+    const appendedKeys: string[] = [];
+    for (const key of uniqueCiteKeys(missingKeys)) {
+      const latestFingerprints = latestByKey.get(key) || [];
+      if (latestFingerprints.length === 0) {
+        appendedKeys.push(key);
+        continue;
+      }
+
+      const fetchedEntry = fetchedByKey.get(key);
+      if (
+        !fetchedEntry ||
+        latestFingerprints.length !== 1 ||
+        latestFingerprints[0] !== getEntryFingerprint(fetchedEntry)
+      ) {
+        throw new Error(t("error.bibliographyWriteVerificationFailed", { file: bibPath.path }));
+      }
+    }
+
+    if (appendedKeys.length === 0) {
+      return { appendedKeys: [] };
+    }
+
+    if (fetchError !== undefined) {
+      throw fetchError;
+    }
+
+    const absentKeys = appendedKeys.filter((key) => !fetchedByKey.has(key));
     if (absentKeys.length > 0) {
+      if (!fetchedText.trim()) {
+        throw new Error(t("error.emptyBibliographyFromZotero"));
+      }
       throw new Error(t("error.missingBibliographyEntries", { keys: absentKeys.join(", ") }));
     }
 
-    const appendedKeys = uniqueCiteKeys(missingKeys);
     const newText = appendedKeys
       .map((key) => {
         const entry = fetchedByKey.get(key);
@@ -174,11 +310,21 @@ export async function ensureBibliographyEntries(
         return serializeBibtex([entry]).trim();
       })
       .join("\n\n");
-    const combined = existingContent.trim()
-      ? `${existingContent.trimEnd()}\n\n${newText}\n`
-      : `${newText}\n`;
+    const separator = latestContent.length === 0
+      ? ""
+      : latestContent.endsWith("\n\n")
+        ? ""
+        : latestContent.endsWith("\n")
+          ? "\n"
+          : "\n\n";
+    // Preserve the fresh remote text as an exact prefix. Collaborative
+    // providers can then authorize this as insertion-only; trailing comments,
+    // whitespace, and line endings are never normalized away.
+    const combined = `${latestContent}${separator}${newText}\n`;
 
-    await writeBibTextSafely(bibPath, combined);
+    // Read-back must retain the exact pre-write text sequence and every parsed
+    // entry. Only unique, non-overlapping citekeys added by the provider are safe.
+    await writeBibTextSafely(bibPath, combined, true);
     return { appendedKeys };
   });
 }

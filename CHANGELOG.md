@@ -8,6 +8,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 - Provide a Gitee Release download for installation in VS Code and Cursor.
 - Retain the functionality and settings of 0.10.1, including selectable INSPIRE-HEP BibTeX retrieval and merging adjacent LaTeX citations.
+- Preserve concurrent bibliography additions when appending entries in collaborative workspaces, skip entries already added by a collaborator, and reject conflicting or unverifiable updates.
 
 ## [0.10.1] - 2026-09-06
 
