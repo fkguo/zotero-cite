@@ -4,6 +4,13 @@ All notable changes to the "zotero-cite" extension will be documented in this fi
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.11.2] - 2026-09-08
+
+- Publish GitHub releases with a VSIX installer and SHA-256 checksum.
+- Add an English README covering installation, citation workflows, and zotero-inspire setup, including INSPIRE metadata and citation-key settings.
+- Preserve the complete Chinese guide, upstream demonstrations, and contribution history in README.zh-CN.md.
+- Document the Gitee upstream and MIT license, and include bundled dependency license notices.
+
 ## [0.11.1] - 2026-09-07
 
 - Fix citation selection stalling in chapter TeX files in Overleaf Workshop and other virtual projects without a file search provider.
