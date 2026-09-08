@@ -4,7 +4,7 @@ English | [简体中文](README.zh-CN.md)
 
 Insert citations from Zotero and maintain your bibliography while writing in **VS Code or Cursor**. Zotero Cite supports LaTeX, Markdown, Pandoc, Quarto (`.qmd`), R Markdown (`.rmd`), and MDX (`.mdx`), including projects opened through [fkguo’s Overleaf Workshop fork](https://github.com/fkguo/Overleaf-Workshop).
 
-This is **fkguo's modified version** of [arch / Zotero Cite on Gitee](https://gitee.com/rusterx/zotero-cite). It adds automatic LaTeX bibliography discovery, support for collaborative and virtual workspaces, adjacent citation merging, and optional INSPIRE-HEP BibTeX retrieval through [zotero-inspire](https://github.com/fkguo/zotero-inspire).
+This is **a modified version** of [arch / Zotero Cite on Gitee](https://gitee.com/rusterx/zotero-cite). It adds automatic LaTeX bibliography discovery, support for collaborative and virtual workspaces, adjacent citation merging, and optional INSPIRE-HEP BibTeX retrieval through [zotero-inspire](https://github.com/fkguo/zotero-inspire).
 
 [Download the extension](https://github.com/fkguo/zotero-cite/releases/latest) · [Report an issue](https://github.com/fkguo/zotero-cite/issues) · [Changelog](CHANGELOG.md) · [Gitee repository](https://gitee.com/fkguo/zotero-cite)
 
