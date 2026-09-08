@@ -145,7 +145,7 @@ Markdown citation previews and completion are enabled by default: hover over `[^
 
 ## Overleaf Workshop
 
-For the Overleaf workflow described here, use **[fkguo’s Overleaf Workshop fork](https://github.com/fkguo/Overleaf-Workshop)**, which includes additional collaborative-editing, compilation, and PDF-preview fixes. Download its `.vsix` from the **[fork’s latest GitHub release](https://github.com/fkguo/Overleaf-Workshop/releases/latest)** and install it through **Extensions → … → Install from VSIX…**, then reload the editor window.
+For the Overleaf workflow described here, use **[my Overleaf Workshop fork](https://github.com/fkguo/Overleaf-Workshop)**, which includes additional collaborative-editing, compilation, and PDF-preview fixes. Download its `.vsix` from the **[fork’s latest GitHub release](https://github.com/fkguo/Overleaf-Workshop/releases/latest)** and install it through **Extensions → … → Install from VSIX…**, then reload the editor window.
 
 The fork uses the same `iamhyc.overleaf-workshop` extension ID as the Marketplace version. Disable automatic updates for that extension to keep a Marketplace update from replacing the fork. See its [README](https://github.com/fkguo/Overleaf-Workshop#readme) for supported features and remaining limitations.
 
