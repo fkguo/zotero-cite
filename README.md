@@ -1,182 +1,205 @@
 # Zotero Cite
 
-在 VS Code 或 Cursor 中从 Zotero 选择文献、插入引用，并更新参考文献文件。支持 LaTeX、Markdown、Pandoc、Quarto（`.qmd`）、R Markdown（`.rmd`）和 MDX（`.mdx`），也支持 Overleaf Workshop 打开的项目。
+English | [简体中文](README.zh-CN.md)
 
-## 安装
+Insert citations from Zotero and maintain your bibliography while writing in **VS Code or Cursor**. Zotero Cite supports LaTeX, Markdown, Pandoc, Quarto (`.qmd`), R Markdown (`.rmd`), and MDX (`.mdx`), including projects opened through Overleaf Workshop.
 
-1. 下载 [zotero-cite-0.11.1.vsix](https://gitee.com/fkguo/zotero-cite/releases/download/v0.11.1/zotero-cite-0.11.1.vsix)；也可进入[发行版页面](https://gitee.com/fkguo/zotero-cite/releases/tag/v0.11.1)下载附件。不要选择源码压缩包。
-2. 在 VS Code 或 Cursor 的扩展面板中打开右上角菜单，选择 **Install from VSIX…（从 VSIX 安装）**，然后选择下载的文件。
-3. 安装完成后，运行命令面板中的 **Developer: Reload Window（重新加载窗口）**。
+This is **fkguo's modified version** of [arch / Zotero Cite on Gitee](https://gitee.com/rusterx/zotero-cite). It adds automatic LaTeX bibliography discovery, support for collaborative and virtual workspaces, adjacent citation merging, and optional INSPIRE-HEP BibTeX retrieval through [zotero-inspire](https://github.com/fkguo/zotero-inspire).
 
-使用前请启动本机 Zotero，并启用 Better BibTeX。编辑器需为 VS Code 1.61 或更高版本，或兼容的 Cursor 版本。
+[Download the extension](https://github.com/fkguo/zotero-cite/releases/latest) · [Report an issue](https://github.com/fkguo/zotero-cite/issues) · [Changelog](CHANGELOG.md) · [Gitee repository](https://gitee.com/fkguo/zotero-cite)
 
-## 快速上手
+## Install
 
-1. 打开项目文件夹，或通过 Overleaf Workshop 打开项目；确认工作区受信任且文件可写。
-2. 打开并保存要编辑的文档，将光标放在需要引用的位置。
-3. 点击编辑器右上角的 Zotero Cite 按钮，或运行命令 **Zotero Cite：引用并更新文献 / Cite + Bibliography**。
-4. 在 Zotero 选择器中选中文献并确认。LaTeX 文档会插入引用并补充 `.bib` 中缺失的条目；Markdown 类文档会插入脚注引用及文献内容。
+You need:
 
-如果只想插入引用而不更新 `.bib`，使用 **Add Citation for Pandoc/LaTeX**；如果希望在 Markdown 中使用 `[@key]` 并更新 `.bib`，使用 **Cite and Create Bibliography for Pandoc/LaTeX**。
+- **VS Code 1.61 or later**, or a compatible Cursor version.
+- **Zotero desktop**, running on the same computer as your editor.
+- **Better BibTeX for Zotero**, installed and enabled in Zotero. Follow its [installation instructions](https://retorque.re/zotero-better-bibtex/installation/). Better BibTeX is required even when you choose zotero-inspire as your BibTeX source.
 
-扩展没有预设 Option+Z 快捷键。如需使用，可在编辑器的“键盘快捷方式”中找到 **Zotero Cite：引用并更新文献** 并绑定。
+To install this version of Zotero Cite:
 
-## 插件功能与操作演示
+1. Download **[zotero-cite-0.11.2.vsix](https://github.com/fkguo/zotero-cite/releases/download/v0.11.2/zotero-cite-0.11.2.vsix)** from the release assets. Choose the `.vsix`, not a source-code archive.
+2. In VS Code or Cursor, open **Extensions**, click the **…** menu, and select **Install from VSIX…**. Choose the downloaded file.
+3. Run **Developer: Reload Window** from the Command Palette.
 
-以下演示来自[上游 Zotero Cite](https://gitee.com/rusterx/zotero-cite)。演示中的界面和命令名称可能与当前版本略有不同。
+Install updates in the same way. The extension keeps the existing `XING.zotero-cite` identifier, so the VSIX updates an existing installation. Use this repository's release assets to get the features described here.
 
-### Zotero Cite: Export BibLaTeX
+## Your first citation
 
-查询当前编辑的 Markdown、Pandoc 或 LaTeX 文档，根据引用的 key，导出引用至 `.bib` 文件。
+1. Start Zotero and wait for Better BibTeX to finish loading.
+2. Open a project folder in your editor, or open a project with Overleaf Workshop. The workspace must be trusted and the files writable.
+3. Open and save your document. Place the cursor where you want the citation.
+4. Click the Zotero Cite button at the top right of the editor, or run **Zotero Cite: Cite + Bibliography** from the Command Palette.
+5. Search for references in the Zotero citation picker, select one or more, and confirm with Enter.
 
-打开并保存文档，在命令面板运行 **Export BibLaTeX**，输入目标 `.bib` 文件名，即可导出文档中引用的文献。目标文件已经存在时会整体替换其内容。
+In a LaTeX document, the command inserts a citation such as `\cite{Smith:2024abc}` and adds missing entries to the project's `.bib` file. In a Markdown-like document, it inserts a footnote citation and its bibliography text instead.
 
-![导出文档中引用的文献到 bibliography 文件](https://s2.loli.net/2022/02/07/by74icsMBRuVfO9.gif)
+No keyboard shortcut is assigned by default. To use **Option+Z** on macOS or another shortcut, open **Keyboard Shortcuts**, search for **Zotero Cite: Cite + Bibliography**, and assign your preferred key combination.
 
-### Zotero Cite: Add Citation for Pandoc/LaTeX
+## Use with zotero-inspire: INSPIRE-HEP BibTeX
 
-如果你想在 Pandoc 或 LaTeX 文档的书写过程中插入 citation，但不想更新 `.bib` 文件，可以使用此命令。
+This option is useful for high-energy physics and related fields when you want the bibliography supplied by **INSPIRE-HEP**. Better BibTeX provides the Zotero item picker and citation keys; zotero-inspire retrieves the corresponding INSPIRE BibTeX.
 
-将光标放在需要引用的位置，运行 **Add Citation for Pandoc/LaTeX**，在 Zotero 选择器中选中文献并确认。插件会插入引用键；在已有引用内部操作时可以追加引用。
+### 1. Install both Zotero plugins
 
-![在 Pandoc 和 LaTeX 中插入引用而不更新 bibliography](https://s2.loli.net/2022/02/07/ZQSoTM69wdYAB4l.gif)
+Keep **Better BibTeX** enabled. Also install **zotero-inspire 3.1.0 or later**; [the current releases are available here](https://github.com/fkguo/zotero-inspire/releases/latest).
 
-### Zotero Cite: Cite and Create Bibliography for Pandoc/LaTeX
+Download zotero-inspire's `.xpi` file. In Zotero, open **Tools → Plugins**, use the gear menu's **Install Plugin From File…** action, select the `.xpi`, and restart Zotero.
 
-如果你想在 Pandoc 或 LaTeX 文档的书写过程中，插入 citation 的同时更新 `.bib` 文件，可以使用此命令。
+### 2. Prepare your Zotero references
 
-运行 **Cite and Create Bibliography for Pandoc/LaTeX** 并选择文献后，插件会补充 `.bib` 中缺少的条目，再插入引用。LaTeX 项目会自动识别参考文献文件；也可以通过 `zotero-cite.defaultBibName` 指定路径，详见下方的自动选择说明。
+For existing items, select them in Zotero and use **right-click → INSPIRE → With abstracts** or **Without abstracts** to retrieve their INSPIRE metadata. This also records the INSPIRE record ID needed to fetch BibTeX. An item should show **INSPIRE** in its **Archive** field and the numeric record ID in **Loc. in Archive** after a successful update. A DOI or arXiv identifier alone is not enough for this citation workflow until the item has been matched by zotero-inspire.
 
-![在 Pandoc 和 LaTeX 中插入引用并更新 bibliography](https://s2.loli.net/2022/02/07/vefSHTJWnG6DAt7.gif)
+If you want INSPIRE-style citation keys, open zotero-inspire's settings and select **Use INSPIRE Citekey → INSPIRE citekey**, then update the items' metadata. This writes the key to **Citation Key** on Zotero 8 and later, or **Extra** on Zotero 7, for use by Better BibTeX.
 
-### Zotero Cite: Cite and Create Bibliography for Markdown
+Using INSPIRE-style keys is optional: you can keep existing Better BibTeX keys. The BibTeX entries written by Zotero Cite retain the keys selected in the picker, so they match the citations in your document. Avoid changing keys already used in a manuscript unless you also update its citations.
 
-如果你想在 Markdown、Quarto（`.qmd`）、R Markdown（`.rmd`）或 MDX（`.mdx`）文档的书写过程中，插入 citation 的同时更新脚注，可以使用此命令。
+### 3. Choose the source in VS Code or Cursor
 
-运行 **Cite and Create Bibliography for Markdown** 并选择文献后，正文会插入 `[^key]` 形式的脚注引用，文档末尾会补充相应的文献信息。这一命令使用文档内脚注，无需单独的 `.bib` 文件。
+Open editor **Settings**, search for `zotero-cite.bibtexSource`, and select **zotero-inspire**. You can set it just for the current project under the **Workspace** tab.
 
-![在 Markdown 中插入引用并添加文献脚注](https://s2.loli.net/2022/02/07/IcuWZpy7zLJFUsY.gif)
+Alternatively, run **Preferences: Open Workspace Settings (JSON)** and add:
 
-### Zotero Cite: Cite Hyperlink
+```json
+{
+  "zotero-cite.bibtexSource": "zotero-inspire"
+}
+```
 
-先将网页链接复制到剪贴板，再将光标放在 Markdown 类文档的引用位置，运行 **Cite Hyperlink**。插件会插入脚注引用，并在文档末尾添加该链接的脚注说明。
+That is the only required editor setting for choosing INSPIRE BibTeX. Leave `defaultBibName` unset to let Zotero Cite find the bibliography declared by your LaTeX project.
 
-![在 Markdown 中插入超链接引用](https://s2.loli.net/2022/05/04/eMSAvoIQC9gViTG.gif)
+For a project that uses `\citep` and a fixed bibliography file, an example is:
 
-### Zotero Cite: Update BibTeX Entries
+```json
+{
+  "zotero-cite.bibtexSource": "zotero-inspire",
+  "zotero-cite.latexCitationCommand": "citep",
+  "zotero-cite.defaultBibName": "references/refs.bib"
+}
+```
 
-打开 `.bib` 文件并运行 **Update BibTeX Entries**，可以从所选文献来源更新当前文件的条目；在 LaTeX 文档中运行时，会更新自动识别或通过 `defaultBibName` 指定的 `.bib` 文件。
+The citation command must be supported by your LaTeX document's packages. Setting it here changes the inserted command; it does not load `natbib` or `biblatex` for you.
 
-无法匹配或获取的条目会保留，相关原因可在 Zotero Cite 输出面板查看。文献来源可选择 Better BibTeX 或 zotero-inspire，详见下方的来源设置。
+### 4. Insert or refresh citations
 
-## 自动选择 LaTeX 参考文献文件
+Run **Cite + Bibliography** in your `.tex` file and select papers as usual. Missing `.bib` entries are fetched from INSPIRE before the citation is inserted.
 
-通常不需要设置 `.bib` 路径。插件可以识别：
+To refresh entries already in your bibliography, open the `.bib` file and run **Zotero Cite: Update BibTeX Entries**. You can also run that command from a LaTeX document to update its detected bibliography.
 
-- `\bibliography{refs}`，包括逗号分隔的多个文件。
-- `\addbibresource{refs.bib}`、`\addglobalbib` 和 `\addsectionbib`。
-- `% !TeX root = main.tex` 根文件指令。
-- 通过 `\input`、`\include` 和 `\subfile` 引入的项目文件。
+The source setting applies to **Export BibLaTeX**, **Cite and Create Bibliography for Pandoc/LaTeX**, and **Update BibTeX Entries**. It does not change the Markdown footnote workflow, which uses Better BibTeX and your citation style.
 
-检测到多个 `.bib` 文件时会要求选择，并在本次编辑器会话中记住选择。无法从 LaTeX 声明确定路径时，会查找工作区已有的 `.bib` 文件；仍未找到时使用 `ref.bib`。
+**When INSPIRE cannot supply a reference:** Zotero Cite reports the problem and cancels that insertion. During an existing-bibliography update, unavailable entries are preserved and the reasons appear in the **Zotero Cite** Output channel. This source mode accepts INSPIRE entries only. For references outside INSPIRE, change `bibtexSource` to `better-bibtex` to export the metadata in your Zotero library.
 
-如需固定使用某个文件，设置 `zotero-cite.defaultBibName`，例如 `references/refs.bib`。显式设置优先于自动检测；删除该设置或设为空字符串即可恢复自动检测。本地项目和 Overleaf Workshop 项目均可使用这一功能。
+## LaTeX bibliography selection
 
-## 合并到已有引用
+You normally do not need to configure a `.bib` path. Zotero Cite recognizes:
 
-光标紧接在 `\cite{Old}` 的右花括号之后时，选择 `New` 会得到：
+- `\bibliography{refs}`, including comma-separated bibliography names.
+- `\addbibresource{refs.bib}`, `\addglobalbib`, and `\addsectionbib`.
+- A root directive such as `% !TeX root = ../main.tex` in a chapter file.
+- Project files connected by `\input`, `\include`, and `\subfile`.
+
+For example, if `main.tex` contains `\bibliography{references/refs}` and includes `chapters/introduction.tex`, you can cite from the chapter and use the same `references/refs.bib`.
+
+When several bibliography files are possible, the extension asks you to choose and remembers the choice for the editor session. If no LaTeX declaration identifies a bibliography, it looks for existing `.bib` files in the workspace, then falls back to `ref.bib` if none exist.
+
+To override detection, explicitly set `zotero-cite.defaultBibName` to a nonempty path, such as `references/refs.bib`. Remove that setting or set it to `""` to restore detection. **Export BibLaTeX** also remembers the chosen destination for the session; reload the editor window to clear a previously remembered choice if needed.
+
+### Merge citations while writing
+
+Place the cursor inside an existing `\cite{Old}`, or immediately after its closing brace, and select another reference. The result is:
 
 ```latex
 \cite{Old, New}
 ```
 
-已有的引用键会跳过，不会重复添加。光标位于引用命令内部时同样可以追加；位于两个紧邻引用命令之间时，会追加到前一个。若中间隔着空格、换行或标点，则插入新的引用命令。
+Duplicate keys are skipped. A space, line break, or punctuation between the citation and cursor causes a new citation command to be inserted.
 
-可以通过 `zotero-cite.latexCitationCommand` 设置新引用使用的命令，例如 `citep`、`citet`、`parencite` 或 `autocite`，不需要填写前导反斜杠。合并支持所配置的命令及普通 `\cite`，并保留星号和可选参数，例如：
+Set `zotero-cite.latexCitationCommand` to `citep`, `citet`, `parencite`, or `autocite` if required by your document; omit the leading backslash. Merging supports plain `\cite` and the configured command, preserving stars and optional arguments, for example:
 
 ```latex
 \citep[see][p. 3]{Old, New}
 ```
 
-## 选择 BibTeX 来源
+## Markdown, Pandoc, and Quarto
 
-通过 `zotero-cite.bibtexSource` 选择写入 `.bib` 的文献来源：
+Choose the workflow that matches how you render your document:
 
-- `better-bibtex`（默认）：使用 Zotero 中的文献数据，由 Better BibTeX 导出。
-- `zotero-inspire`：从 INSPIRE-HEP 获取 BibTeX。使用前需在 Zotero 中启用支持 BibTeX 接口的 zotero-inspire 插件。
+| Workflow | Command | Result |
+| --- | --- | --- |
+| Markdown footnotes | **Cite + Bibliography**, or **Cite and Create Bibliography for Markdown** | Inserts `[^key]` and appends a formatted footnote definition. No separate `.bib` is needed. |
+| Pandoc citations | **Cite and Create Bibliography for Pandoc/LaTeX** | Inserts a citation such as `[@key]` and adds missing entries to a `.bib` file. |
+| Citation only | **Add Citation for Pandoc/LaTeX** | Inserts citation keys without updating the bibliography. |
 
-这一设置适用于导出 `.bib`、补充缺失条目和更新已有条目。两种来源均需 Better BibTeX 提供文献选择器；Markdown 脚注式文献仍使用 Better BibTeX。
+For Pandoc or Quarto, configure your document's bibliography for rendering as usual, for example:
 
-选择 `zotero-inspire` 后，无法从 INSPIRE-HEP 获取条目时，本次新增引用会取消并提示原因。更新已有 `.bib` 时，无法获取的条目会保留，原因可在 Zotero Cite 输出面板查看。
+```yaml
+---
+bibliography: references.bib
+---
+```
 
-## 常用命令
+Set `zotero-cite.defaultBibName` to `references.bib` so the extension writes to the same file. The automatic LaTeX declaration discovery described above does not read this YAML setting.
 
-可在命令面板中搜索 `Zotero Cite`。命令名称会随编辑器语言显示为中文或英文。
+Markdown citation previews and completion are enabled by default: hover over `[^key]` or `@key`, or type `[^` or `@` to see suggestions. To insert a website as a footnote, copy its URL to the clipboard and run **Cite Hyperlink**.
 
-| 命令 | 用途 |
+## Overleaf Workshop
+
+Open your project through Overleaf Workshop, keep Zotero running locally, and use the same citation commands. Bibliography discovery works from the main file and included chapter files. The project must be connected, trusted, and writable.
+
+If multiple bibliography files are present, choose the intended file when prompted. If a remote save fails or a simultaneous edit conflicts with an update, check the **Zotero Cite** Output channel and the current bibliography before retrying.
+
+## Command reference
+
+Open the Command Palette and search for **Zotero Cite**. Command labels follow the editor's display language.
+
+| Command | What it does |
 | --- | --- |
-| Cite + Bibliography | 根据文档类型插入引用并更新文献；LaTeX 使用 `.bib`，Markdown 类文档使用脚注。 |
-| Add Citation for Pandoc/LaTeX | 仅插入引用，不更新参考文献文件。 |
-| Cite and Create Bibliography for Pandoc/LaTeX | 插入 LaTeX 或 Pandoc 引用，并补充 `.bib` 中缺失的条目。 |
-| Cite and Create Bibliography for Markdown | 插入脚注引用，并在 Markdown 类文档末尾补充文献信息。 |
-| Export BibLaTeX | 导出当前文档引用的文献，提示输入目标 `.bib` 文件名；已有目标文件会被整体替换。 |
-| Update BibTeX Entries | 按所选 BibTeX 来源更新条目；打开 `.bib` 时更新当前文件，在 LaTeX 中运行时使用自动检测或显式指定的路径。未匹配条目保留。 |
-| Cite Hyperlink | 在 Markdown 类文档中，将剪贴板中的链接插入为脚注。 |
+| **Project Tasks** | Opens the Zotero Cite command menu; also available from the status bar. |
+| **Cite + Bibliography** | Uses `.bib` entries for LaTeX and footnotes for Markdown-like documents. |
+| **Add Citation for Pandoc/LaTeX** | Inserts citations without writing bibliography entries. |
+| **Cite and Create Bibliography for Pandoc/LaTeX** | Inserts citations and adds missing `.bib` entries. |
+| **Cite and Create Bibliography for Markdown** | Inserts footnote citations and bibliography text in the document. |
+| **Export BibLaTeX** | Exports references cited in the active document to a filename you choose. **Replaces the whole destination file if it already exists.** |
+| **Update BibTeX Entries** | Refreshes the active `.bib` file, or the bibliography resolved from the active LaTeX document. Unmatched entries are retained. |
+| **Cite Hyperlink** | Inserts the clipboard URL as a Markdown footnote. |
 
-## 常用设置
+## Common settings
 
-在编辑器设置中搜索 `zotero-cite`：
+Search for `zotero-cite` in editor Settings. Prefix the names below with `zotero-cite.` when editing JSON.
 
-- `defaultBibName`：覆盖自动检测的 `.bib` 路径。支持 `${workspaceFolder}`、`${fileBasename}`、`${fileBasenameNoExtension}`、`${fileDirname}` 和 `${fileExtname}` 占位符。
-- `latexCitationCommand`：LaTeX 引用命令，默认为 `cite`。
-- `latexBibStyle`：Better BibTeX 导出格式，可设为 `bibtex` 或 `biblatex`，默认为 `bibtex`。
-- `bibtexSource`：BibTeX 来源，默认为 `better-bibtex`。
-- `excludedBibFields`：Better BibTeX 导出时排除的字段，默认排除 `file` 和 `annotation`。
-- `showMarkdownCitationHoverPreview`：显示 Markdown 中 `[^key]` 与 `@key` 的悬浮预览，默认开启。
-- `showMarkdownCitationCompletion`：输入 `[^` 或 `@` 时显示 Markdown 引用建议列表，默认开启。
+| Setting | Purpose |
+| --- | --- |
+| `bibtexSource` | `better-bibtex` (default) for Zotero metadata, or `zotero-inspire` for INSPIRE-HEP BibTeX. |
+| `defaultBibName` | Explicit bibliography path override. Leave unset for automatic detection. |
+| `latexCitationCommand` | Command for new LaTeX citations, without `\`; default `cite`. |
+| `latexBibStyle` | Better BibTeX export format: `bibtex` (default) or `biblatex`. This does not convert INSPIRE output into biblatex. |
+| `excludedBibFields` | Fields omitted from exported entries; defaults to `file` and `annotation`. |
+| `bibliograpyStyle` | CSL style URL used for formatted bibliography text, such as Markdown footnotes; defaults to APA. The setting name is spelled `bibliograpyStyle`. |
+| `showMarkdownCitationHoverPreview` | Enable citation hover previews; default `true`. |
+| `showMarkdownCitationCompletion` | Enable citation suggestions; default `true`. |
+| `showCommandPickerInStatusBar` | Show the command menu in the status bar; default `true`. |
 
-## 常见问题
+An explicit `defaultBibName` supports `${workspaceFolder}`, `${fileBasename}`, `${fileBasenameNoExtension}`, `${fileDirname}`, and `${fileExtname}` placeholders.
 
-**无法打开 Zotero 选择器**
+## Troubleshooting
 
-确认 Zotero 已启动、Better BibTeX 已启用。如果曾修改 `zotero-cite.caywUrl` 或 `zotero-cite.jsonRpcUrl`，请检查地址是否正确。选择文献后需在 Zotero 选择器中确认。
+**The Zotero picker does not open.** Ensure Zotero is running and Better BibTeX is enabled and ready. If you previously changed `caywUrl` or `jsonRpcUrl`, restore the default addresses for a normal local setup. Confirm the selected papers in the picker to finish insertion.
 
-**没有自动选择预期的 `.bib` 文件**
+**INSPIRE BibTeX is unavailable.** Check that zotero-inspire is enabled and up to date, then restart Zotero. Update the item's INSPIRE metadata and check its Archive and record ID fields. Zotero must be able to reach INSPIRE-HEP. For papers not covered by INSPIRE, use the `better-bibtex` source.
 
-检查是否仍显式设置了 `defaultBibName`，并确认 LaTeX 中声明的路径正确。复杂的宏展开路径可能无法自动识别，此时可显式指定 `.bib` 路径。
+**The wrong bibliography is selected.** Check for an explicit `defaultBibName` and verify paths in your LaTeX source. Reload the window to clear a remembered choice. If your project constructs paths through complex TeX macros, set the bibliography path explicitly.
 
-**Overleaf Workshop 中无法更新 `.bib`**
+**References with the same key exist in multiple libraries.** Give the items distinct Better BibTeX keys before retrying, so the selected key identifies a single reference.
 
-确认项目连接正常、工作区受信任且当前账号有编辑权限。Zotero 需运行在编辑器所在电脑上。遇到保存错误时查看 Zotero Cite 输出面板；不要反复重试覆盖他人正在编辑的内容。
+**The editor still behaves like an older version.** Run **Developer: Reload Window** and check the installed version in the extension's details page.
 
-**安装更新后仍是旧行为**
+For other problems, [open an issue](https://github.com/fkguo/zotero-cite/issues) with the extension, editor, Zotero, and Better BibTeX versions; include the zotero-inspire version if relevant, reproduction steps, and the error message from **View → Output → Zotero Cite**.
 
-运行 **Developer: Reload Window**，并在扩展详情页确认已安装的版本。
+## License and acknowledgments
 
-## 教学视频
+Zotero Cite is distributed under the **[MIT License](LICENSE.md)**. The upstream copyright notice and full license text are retained. Bundled dependency notices are included in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-[上游教学视频（百度网盘）](https://pan.baidu.com/s/10FE43K7ZR4LhHv19_5qrnw?pwd=bjf6)，提取码：`bjf6`。
+This repository is maintained by [fkguo](https://github.com/fkguo) and derives from **[arch / Zotero Cite on Gitee](https://gitee.com/rusterx/zotero-cite)**. Thanks to the upstream author and contributors, including [MichiyamaKaren](https://gitee.com/MichiyamaKaren), [awwaawwa](https://gitee.com/awwaawwa), [cesaryuan](https://gitee.com/cesaryuan), and [aasll](https://gitee.com/aasll). The [Chinese README](README.zh-CN.md#上游历史与贡献) preserves the upstream usage demonstrations and contribution history.
 
-## 上游历史与贡献
-
-本项目基于 [arch / zotero-cite](https://gitee.com/rusterx/zotero-cite)。以下保留上游的主要更新与贡献记录；本 fork 的后续更新见 [CHANGELOG](CHANGELOG.md)。
-
-- 2021-11-01：创建了 zotero-export 插件并增加了文件名输入的功能。增加 when 支持，只允许在 Markdown 或 LaTeX 环境下激发命令。
-- 2021-11-02：将 zotero-export 插件更名为 export-cite，优化 bibliography 导出到文件的功能，使其支持 LaTeX 环境。同时添加了 `zotero-cite.citeBibliography` 以及 `zotero-cite.citeMarkdownBibliography` 两个命令，使其可以在插入引用的同时，将 bibliography 插入到默认的文件中。
-- 2022-02-06：对 zotero-cite 进行了全面的修改，使其可以支持 Markdown、Pandoc 以及 LaTeX 环境的引用插入。可以识别当前光标的位置是否在引用环境中，从而决定是应该直接插入，还是采用新增的方式插入引用。
-- 2022-02-07：优化 Pandoc 以及 LaTeX 文件的插入引用函数，消耗资源更少。
-- 2022-05-04：添加了 Markdown 环境下超链接的引用功能。
-- 2024-04-07：由于 [MichiyamaKaren](https://gitee.com/MichiyamaKaren) 的贡献，插件支持最新的 Better BibTeX for Zotero 插件。
-- 2024-04-22：由于 [fkguo](https://gitee.com/fkguo) 的贡献，插件的 citekey 支持 `-` 和 `:` 等特殊符号。
-- 2024-04-22：由于 [awwaawwa](https://gitee.com/awwaawwa) 的贡献，插件支持多个分组。
-- 2024-06-13：由于 [cesaryuan](https://gitee.com/cesaryuan) 的贡献，在使用 `exportBibLatex` 时，插件支持 `\citet` 和 `\citep` 命令。
-- 2024-07-09：由于 [aasll](https://gitee.com/aasll) 的贡献，插件支持自定义参考文献文件的位置，并支持使用自定义通配符。
-- 2026-02-02：由于 [aasll](https://gitee.com/aasll) 的贡献，在 Markdown 和 TeX 文件右上角添加了插入引用的按钮。
-- 2026-02-04：由于 [aasll](https://gitee.com/aasll) 的贡献，修复了添加引用无法检测已有重复条目的问题，修复了 Update BibTeX Entries 功能，并增强了返回结果的体验。
-- 2026-04-20：将 JavaScript 插件转换成 TypeScript 并模块化；增加状态栏的命令选择按钮；增加 Markdown 引用的预览、建议列表及其显示设置；增加导出时排除字段的配置。
-- 2026-04-26：增加了对 pandoc-crossref 格式的图片、表格等引用的预览。
-- 2026-05-11：由于 [aasll](https://gitee.com/aasll) 的贡献，增加自定义引用命令功能，可以使用 `\cite` 或其他引用命令。
-
-## 更新记录与反馈
-
-完整更新记录见 [CHANGELOG](CHANGELOG.md)。问题与建议请提交到[本仓库 Issues](https://gitee.com/fkguo/zotero-cite/issues)，附上扩展版本、编辑器及 Zotero 版本、复现步骤和错误信息。
+[Better BibTeX](https://retorque.re/zotero-better-bibtex/) and [zotero-inspire](https://github.com/fkguo/zotero-inspire) are separate Zotero plugins, installed independently under their respective licenses.
