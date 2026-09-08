@@ -2,7 +2,8 @@ import { randomBytes } from "crypto";
 import * as path from "path";
 import * as vscode from "vscode";
 
-import { parseBibtex, ParsedBibEntry, serializeBibtex } from "./bibtexParser";
+import { parseBibtex, parseBibtexForAppend, ParsedBibEntry, serializeBibtex } from "./bibtexParser";
+import type { BibtexSyntaxWarning } from "./bibtexAppend";
 import { getMissingCiteKeys, uniqueCiteKeys } from "./citeKeys";
 import { t } from "./i18n";
 
@@ -10,7 +11,12 @@ const fileLocks = new Map<string, Promise<void>>();
 
 export type EnsureBibliographyResult = {
   appendedKeys: string[];
+  syntaxWarnings?: BibtexSyntaxWarning[];
 };
+
+function appendResult(appendedKeys: string[], syntaxWarnings: BibtexSyntaxWarning[]): EnsureBibliographyResult {
+  return syntaxWarnings.length > 0 ? { appendedKeys, syntaxWarnings } : { appendedKeys };
+}
 
 export type BibEntryTransformResult<T> = {
   serializedEntries?: string[];
@@ -125,7 +131,7 @@ function isSafeSemanticSuperset(
     }
 
     const key = getEntryKey(entry);
-    if (!key || expectedKeys.has(key) || additionalKeys.has(key)) {
+    if (!key || entry.unparsedBibtex !== undefined || expectedKeys.has(key) || additionalKeys.has(key)) {
       return false;
     }
     additionalKeys.add(key);
@@ -140,17 +146,22 @@ function isSafeSemanticSuperset(
 async function verifyBibTextWrite(
   bibPath: vscode.Uri,
   expectedContent: string,
+  appendMode = false,
   allowSemanticSuperset = false
 ): Promise<void> {
   const writtenBytes = await vscode.workspace.fs.readFile(bibPath);
   const writtenContent = Buffer.from(writtenBytes).toString("utf8");
-  const writtenEntries = await parseBibtex(writtenContent);
+  const writtenEntries = appendMode
+    ? (await parseBibtexForAppend(writtenContent)).entries
+    : await parseBibtex(writtenContent);
 
   if (writtenContent === expectedContent) {
     return;
   }
 
-  const expectedEntries = allowSemanticSuperset ? await parseBibtex(expectedContent) : [];
+  const expectedEntries = allowSemanticSuperset
+    ? (await parseBibtexForAppend(expectedContent)).entries
+    : [];
   if (
     !allowSemanticSuperset ||
     !isOrderedSubsequence(expectedContent, writtenContent) ||
@@ -160,14 +171,14 @@ async function verifyBibTextWrite(
   }
 }
 
-async function atomicWriteLocalBibText(bibPath: vscode.Uri, content: string): Promise<void> {
+async function atomicWriteLocalBibText(bibPath: vscode.Uri, content: string, appendMode: boolean): Promise<void> {
   const tempName = `.${path.basename(bibPath.path)}.${process.pid}.${randomBytes(6).toString("hex")}.tmp`;
   const tempPath = vscode.Uri.joinPath(bibPath, "..", tempName);
 
   try {
     await vscode.workspace.fs.writeFile(tempPath, Buffer.from(content, "utf8"));
 
-    await verifyBibTextWrite(tempPath, content);
+    await verifyBibTextWrite(tempPath, content, appendMode);
 
     await vscode.workspace.fs.rename(tempPath, bibPath, { overwrite: true });
   } catch (error) {
@@ -183,12 +194,16 @@ async function atomicWriteLocalBibText(bibPath: vscode.Uri, content: string): Pr
 async function writeBibTextSafely(
   bibPath: vscode.Uri,
   content: string,
-  allowSemanticSuperset = false
+  appendMode = false
 ): Promise<void> {
-  await parseBibtex(content);
+  if (appendMode) {
+    await parseBibtexForAppend(content);
+  } else {
+    await parseBibtex(content);
+  }
 
   if (bibPath.scheme === "file") {
-    await atomicWriteLocalBibText(bibPath, content);
+    await atomicWriteLocalBibText(bibPath, content, appendMode);
     return;
   }
 
@@ -196,7 +211,7 @@ async function writeBibTextSafely(
   // through rename. Write through the provider's native update path and verify
   // the committed content before reporting success.
   await vscode.workspace.fs.writeFile(bibPath, Buffer.from(content, "utf8"));
-  await verifyBibTextWrite(bibPath, content, allowSemanticSuperset);
+  await verifyBibTextWrite(bibPath, content, appendMode, appendMode);
 }
 
 function getEntryKey(entry: ParsedBibEntry): string {
@@ -234,12 +249,12 @@ export async function ensureBibliographyEntries(
 ): Promise<EnsureBibliographyResult> {
   return withBibFileLock(bibPath, async () => {
     const existingContent = (await readBibTextIfExists(bibPath)) || "";
-    const existingEntries = existingContent.trim() ? await parseBibtex(existingContent) : [];
-    const existingKeys = existingEntries.map(getEntryKey).filter((key) => key.length > 0);
+    const existing = await parseBibtexForAppend(existingContent);
+    const existingKeys = existing.entries.map(getEntryKey).filter((key) => key.length > 0);
     const missingKeys = getMissingCiteKeys(existingKeys, requestedKeys);
 
     if (missingKeys.length === 0) {
-      return { appendedKeys: [] };
+      return appendResult([], existing.syntaxWarnings);
     }
 
     let fetchedText = "";
@@ -265,8 +280,8 @@ export async function ensureBibliographyEntries(
     // Fetching may take long enough for a collaborator to update the file. Base
     // the full-file write on this fresh snapshot rather than the initial read.
     const latestContent = (await readBibTextIfExists(bibPath)) || "";
-    const latestEntries = latestContent.trim() ? await parseBibtex(latestContent) : [];
-    const latestByKey = getKeyedEntryFingerprints(latestEntries);
+    const latest = await parseBibtexForAppend(latestContent);
+    const latestByKey = getKeyedEntryFingerprints(latest.entries);
     const appendedKeys: string[] = [];
     for (const key of uniqueCiteKeys(missingKeys)) {
       const latestFingerprints = latestByKey.get(key) || [];
@@ -286,7 +301,7 @@ export async function ensureBibliographyEntries(
     }
 
     if (appendedKeys.length === 0) {
-      return { appendedKeys: [] };
+      return appendResult([], latest.syntaxWarnings);
     }
 
     if (fetchError !== undefined) {
@@ -325,7 +340,7 @@ export async function ensureBibliographyEntries(
     // Read-back must retain the exact pre-write text sequence and every parsed
     // entry. Only unique, non-overlapping citekeys added by the provider are safe.
     await writeBibTextSafely(bibPath, combined, true);
-    return { appendedKeys };
+    return appendResult(appendedKeys, latest.syntaxWarnings);
   });
 }
 

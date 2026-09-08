@@ -1,4 +1,5 @@
 import { parentPort, workerData } from "worker_threads";
+import { indexBibtexForAppend } from "./bibtexAppend";
 
 // The package does not publish TypeScript declarations.
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -8,6 +9,7 @@ const bibtexParse = require("@orcid/bibtex-parse-js") as {
 
 type ParserWorkerData = {
   content: string;
+  append?: boolean;
 };
 
 if (!parentPort) {
@@ -15,8 +17,11 @@ if (!parentPort) {
 }
 
 try {
-  const entries = bibtexParse.toJSON((workerData as ParserWorkerData).content);
-  parentPort.postMessage({ ok: true, entries });
+  const data = workerData as ParserWorkerData;
+  const result = data.append
+    ? indexBibtexForAppend(data.content)
+    : { entries: bibtexParse.toJSON(data.content), syntaxWarnings: [] };
+  parentPort.postMessage({ ok: true, ...result });
 } catch (error) {
   parentPort.postMessage({
     ok: false,

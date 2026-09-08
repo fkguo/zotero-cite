@@ -182,6 +182,10 @@ const messages: Record<string, LocaleMessage> = {
     en: "The bibliography write could not be verified for {file}.",
     zhCN: "无法验证参考文献文件 {file} 的写入结果。",
   },
+  "warning.bibliographySyntaxPreserved": {
+    en: "Citation inserted. Existing BibTeX syntax errors were preserved in {file}: {entries} (line numbers). Fix them before compiling; details are in the Zotero Cite Output channel.",
+    zhCN: "引用已插入。{file} 中原有的 BibTeX 语法错误已保留：{entries}（括号内为行号）。编译前仍需修正；详情见 Zotero Cite 输出面板。",
+  },
   "error.editorRejectedEdit": {
     en: "The editor rejected the requested citation edit.",
     zhCN: "编辑器拒绝了本次引用文本修改。",

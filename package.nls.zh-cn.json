@@ -1,6 +1,6 @@
 {
   "displayName": "Zotero 引用助手",
-  "description": "通过 Zotero JSON-RPC 完成引用与参考文献管理",
+  "description": "在 VS Code 及兼容的衍生编辑器中从 Zotero 插入引用，并自动更新 .bib 文件；可选用 INSPIRE-HEP 文献来源。",
   "capabilities.untrustedWorkspaces.description": "此扩展会读写参考文献文件，并访问已配置的 Zotero 接口。",
   "capabilities.virtualWorkspaces.description": "支持由虚拟文件系统提供的参考文献文件，包括 Overleaf Workshop。",
   "command.showTaskPicker.title": "Zotero Cite：项目任务",

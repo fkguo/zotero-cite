@@ -1,6 +1,6 @@
 {
   "displayName": "Zotero Cite",
-  "description": "Cite and manage bibliography from Zotero via JSON-RPC",
+  "description": "Insert Zotero citations and automatically update .bib files in VS Code and compatible VS Code-based editors, with optional INSPIRE-HEP support.",
   "capabilities.untrustedWorkspaces.description": "This extension reads and writes bibliography files and contacts configured Zotero endpoints.",
   "capabilities.virtualWorkspaces.description": "Supports bibliography files provided by virtual file systems, including Overleaf Workshop.",
   "command.showTaskPicker.title": "Zotero Cite: Project Tasks",

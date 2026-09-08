@@ -4,6 +4,12 @@ All notable changes to the "zotero-cite" extension will be documented in this fi
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.11.3] - 2026-09-09
+
+- Allow citation insertion past syntax errors in independently delimited existing BibTeX entries, preserving their text and citation keys while strictly validating new entries.
+- Show affected keys and line numbers after insertion; keep ambiguous entry boundaries, conflicting updates, and full-file replacements protected.
+- Describe automatic `.bib` updates and support for compatible VS Code-based editors beyond Cursor.
+
 ## [0.11.2] - 2026-09-08
 
 - Publish GitHub releases with a VSIX installer and SHA-256 checksum.

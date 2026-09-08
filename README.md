@@ -2,7 +2,7 @@
 
 English | [简体中文](README.zh-CN.md)
 
-Insert citations from Zotero and maintain your bibliography while writing in **VS Code or Cursor**. Zotero Cite supports LaTeX, Markdown, Pandoc, Quarto (`.qmd`), R Markdown (`.rmd`), and MDX (`.mdx`), including projects opened through [fkguo’s Overleaf Workshop fork](https://github.com/fkguo/Overleaf-Workshop).
+Insert Zotero citations and automatically update `.bib` files in **VS Code and compatible VS Code-based editors**, including Cursor. Zotero Cite supports LaTeX, Markdown, Pandoc, Quarto (`.qmd`), R Markdown (`.rmd`), and MDX (`.mdx`), including projects opened through [fkguo’s Overleaf Workshop fork](https://github.com/fkguo/Overleaf-Workshop).
 
 This is **a modified version** of [arch / Zotero Cite on Gitee](https://gitee.com/rusterx/zotero-cite). It adds automatic LaTeX bibliography discovery, support for collaborative and virtual workspaces, adjacent citation merging, and optional INSPIRE-HEP BibTeX retrieval through [zotero-inspire](https://github.com/fkguo/zotero-inspire).
 
@@ -12,14 +12,14 @@ This is **a modified version** of [arch / Zotero Cite on Gitee](https://gitee.co
 
 You need:
 
-- **VS Code 1.61 or later**, or a compatible Cursor version.
+- **VS Code 1.61 or later**, or a compatible VS Code-based editor that supports VS Code extensions and VSIX installation (for example, Cursor).
 - **Zotero desktop**, running on the same computer as your editor.
 - **Better BibTeX for Zotero**, installed and enabled in Zotero. Follow its [installation instructions](https://retorque.re/zotero-better-bibtex/installation/). Better BibTeX is required even when you choose zotero-inspire as your BibTeX source.
 
 To install this version of Zotero Cite:
 
-1. Download **[zotero-cite-0.11.2.vsix](https://github.com/fkguo/zotero-cite/releases/download/v0.11.2/zotero-cite-0.11.2.vsix)** from the release assets. Choose the `.vsix`, not a source-code archive.
-2. In VS Code or Cursor, open **Extensions**, click the **…** menu, and select **Install from VSIX…**. Choose the downloaded file.
+1. Download **[zotero-cite-0.11.3.vsix](https://github.com/fkguo/zotero-cite/releases/download/v0.11.3/zotero-cite-0.11.3.vsix)** from the release assets. Choose the `.vsix`, not a source-code archive.
+2. In your editor, open **Extensions**, click the **…** menu, and select **Install from VSIX…**. Choose the downloaded file.
 3. Run **Developer: Reload Window** from the Command Palette.
 
 Install updates in the same way. The extension keeps the existing `XING.zotero-cite` identifier, so the VSIX updates an existing installation. Use this repository's release assets to get the features described here.
@@ -54,7 +54,7 @@ If you want INSPIRE-style citation keys, open zotero-inspire's settings and sele
 
 Using INSPIRE-style keys is optional: you can keep existing Better BibTeX keys. The BibTeX entries written by Zotero Cite retain the keys selected in the picker, so they match the citations in your document. Avoid changing keys already used in a manuscript unless you also update its citations.
 
-### 3. Choose the source in VS Code or Cursor
+### 3. Choose the source in your editor
 
 Open editor **Settings**, search for `zotero-cite.bibtexSource`, and select **zotero-inspire**. You can set it just for the current project under the **Workspace** tab.
 
@@ -104,6 +104,12 @@ For example, if `main.tex` contains `\bibliography{references/refs}` and include
 When several bibliography files are possible, the extension asks you to choose and remembers the choice for the editor session. If no LaTeX declaration identifies a bibliography, it looks for existing `.bib` files in the workspace, then falls back to `ref.bib` if none exist.
 
 To override detection, explicitly set `zotero-cite.defaultBibName` to a nonempty path, such as `references/refs.bib`. Remove that setting or set it to `""` to restore detection. **Export BibLaTeX** also remembers the chosen destination for the session; reload the editor window to clear a previously remembered choice if needed.
+
+### Existing BibTeX syntax errors
+
+A syntax error inside an existing, clearly delimited entry (for example, a missing comma between fields) does not block adding other references. Zotero Cite preserves the old text exactly, reserves its citation key to prevent duplicates, and validates new entries before appending them. A warning lists the affected keys and line numbers; details appear in **View → Output → Zotero Cite**. You still need to fix those errors before compiling your bibliography.
+
+If an entry's header, braces, or quotes make its boundary uncertain, insertion stops with an error. Existing-entry refresh and full-file export still require parseable BibTeX.
 
 ### Merge citations while writing
 

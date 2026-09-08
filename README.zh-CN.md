@@ -2,15 +2,15 @@
 
 [English](README.md) | 简体中文
 
-在 VS Code 或 Cursor 中从 Zotero 选择文献、插入引用，并更新参考文献文件。支持 LaTeX、Markdown、Pandoc、Quarto（`.qmd`）、R Markdown（`.rmd`）和 MDX（`.mdx`），也支持通过 [fkguo 的 Overleaf Workshop fork](https://github.com/fkguo/Overleaf-Workshop) 打开的项目。
+在 VS Code 及兼容的衍生编辑器（如 Cursor）中从 Zotero 插入引用，并自动更新 `.bib` 文件。支持 LaTeX、Markdown、Pandoc、Quarto（`.qmd`）、R Markdown（`.rmd`）和 MDX（`.mdx`），也支持通过 [fkguo 的 Overleaf Workshop fork](https://github.com/fkguo/Overleaf-Workshop) 打开的项目。
 
 ## 安装
 
-1. 下载 [zotero-cite-0.11.2.vsix](https://github.com/fkguo/zotero-cite/releases/download/v0.11.2/zotero-cite-0.11.2.vsix)；也可进入[发行版页面](https://github.com/fkguo/zotero-cite/releases/tag/v0.11.2)下载附件。不要选择源码压缩包。
-2. 在 VS Code 或 Cursor 的扩展面板中打开右上角菜单，选择 **Install from VSIX…（从 VSIX 安装）**，然后选择下载的文件。
+1. 下载 [zotero-cite-0.11.3.vsix](https://github.com/fkguo/zotero-cite/releases/download/v0.11.3/zotero-cite-0.11.3.vsix)；也可进入[发行版页面](https://github.com/fkguo/zotero-cite/releases/tag/v0.11.3)下载附件。不要选择源码压缩包。
+2. 在编辑器的扩展面板中打开右上角菜单，选择 **Install from VSIX…（从 VSIX 安装）**，然后选择下载的文件。
 3. 安装完成后，运行命令面板中的 **Developer: Reload Window（重新加载窗口）**。
 
-使用前请启动本机 Zotero，并启用 Better BibTeX。编辑器需为 VS Code 1.61 或更高版本，或兼容的 Cursor 版本。
+使用前请启动本机 Zotero，并启用 Better BibTeX。编辑器需为 VS Code 1.61 或更高版本，或支持 VS Code 扩展及 VSIX 安装的兼容衍生编辑器（如 Cursor）。
 
 ## 快速上手
 
@@ -83,6 +83,12 @@
 检测到多个 `.bib` 文件时会要求选择，并在本次编辑器会话中记住选择。无法从 LaTeX 声明确定路径时，会查找工作区已有的 `.bib` 文件；仍未找到时使用 `ref.bib`。
 
 如需固定使用某个文件，设置 `zotero-cite.defaultBibName`，例如 `references/refs.bib`。显式设置优先于自动检测；删除该设置或设为空字符串即可恢复自动检测。本地项目和 Overleaf Workshop 项目均可使用这一功能。
+
+## 已有 BibTeX 条目的语法错误
+
+已有条目中缺少字段分隔逗号等局部语法错误，不再阻止添加其他文献，前提是条目边界清楚。插件会逐字保留原有内容，保留已有引用键以防重复，并严格校验新增条目。完成引用后会提示有问题的 key 和行号，详情可在 **View → Output → Zotero Cite** 查看。编译参考文献前仍需修正这些错误。
+
+若条目头、括号或引号的问题导致无法可靠判断边界，则停止插入并报错。更新已有条目及整体导出仍要求 BibTeX 可正常解析。
 
 ## 合并到已有引用
 

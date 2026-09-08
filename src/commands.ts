@@ -291,6 +291,22 @@ async function citeBibliography(): Promise<void> {
     // Do not leave a document citation behind unless its bibliography update succeeded.
     await insertCiteKeys(citeKeys, editor);
 
+    if (result.syntaxWarnings?.length) {
+      const locations = result.syntaxWarnings.map((warning) =>
+        `${warning.key || "BibTeX"} (${warning.line})`
+      );
+      const message = t("warning.bibliographySyntaxPreserved", {
+        file: path.basename(bibPath.path),
+        entries: locations.slice(0, 5).join(", ") + (locations.length > 5 ? ", …" : ""),
+      });
+      const output = getOutputChannel();
+      output.appendLine(message);
+      for (const warning of result.syntaxWarnings) {
+        output.appendLine(`${bibPath.path}:${warning.line}: ${warning.key || "BibTeX"}: ${warning.message}`);
+      }
+      void vscode.window.showWarningMessage(message);
+    }
+
     if (result.appendedKeys.length > 0) {
       showStatusMessage(
         t("status.bibliographyUpdated", {

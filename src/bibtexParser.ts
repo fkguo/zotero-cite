@@ -1,5 +1,6 @@
 import * as path from "path";
 import { Worker } from "worker_threads";
+import type { BibtexAppendIndex } from "./bibtexAppend";
 
 // The package does not publish TypeScript declarations.
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -18,7 +19,7 @@ const DEFAULT_PARSE_TIMEOUT_MS = 5_000;
 const MAX_BIBTEX_BYTES = 10 * 1024 * 1024;
 
 type ParserWorkerMessage =
-  | { ok: true; entries: ParsedBibEntry[] }
+  | ({ ok: true } & BibtexAppendIndex)
   | { ok: false; message: string };
 
 /** Parse untrusted BibTeX away from the VS Code extension host. */
@@ -26,6 +27,22 @@ export function parseBibtex(
   content: string,
   timeoutMs = DEFAULT_PARSE_TIMEOUT_MS
 ): Promise<ParsedBibEntry[]> {
+  return runParserWorker(content, timeoutMs, false).then((result) => result.entries);
+}
+
+/** Index old entries for append-only operations, retaining malformed blocks verbatim. */
+export function parseBibtexForAppend(
+  content: string,
+  timeoutMs = DEFAULT_PARSE_TIMEOUT_MS
+): Promise<BibtexAppendIndex> {
+  return runParserWorker(content, timeoutMs, true);
+}
+
+function runParserWorker(
+  content: string,
+  timeoutMs: number,
+  append: boolean
+): Promise<BibtexAppendIndex> {
   const byteLength = Buffer.byteLength(content, "utf8");
   if (byteLength > MAX_BIBTEX_BYTES) {
     return Promise.reject(
@@ -37,6 +54,7 @@ export function parseBibtex(
     const worker = new Worker(path.join(__dirname, "bibtexWorker.js"), {
       workerData: {
         content,
+        append,
       },
     });
 
@@ -57,7 +75,7 @@ export function parseBibtex(
 
     worker.once("message", (message: ParserWorkerMessage) => {
       if (message.ok) {
-        finish(() => resolve(message.entries));
+        finish(() => resolve({ entries: message.entries, syntaxWarnings: message.syntaxWarnings }));
       } else {
         finish(() => reject(new Error(`Invalid BibTeX: ${message.message}`)));
       }

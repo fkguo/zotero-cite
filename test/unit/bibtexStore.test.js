@@ -92,6 +92,126 @@ function loadBibtexStore(vscode) {
 }
 
 suite("duplicate-safe BibTeX store", () => {
+  const broken = '@misc{Existing2026,\ntitle={Existing work}\nnote="in preparation"\nyear={2026}\n}\n';
+  const target = '@phdthesis{Hauenstein:2015ibu, title={A thesis}, year={2015}}';
+
+  for (const scheme of ["file", "overleaf-workshop", "another-virtual-provider"]) {
+    test(`appends past malformed old fields and preserves their exact bytes (${scheme})`, async () => {
+      const { vscode, files } = createMemoryVscode();
+      const { ensureBibliographyEntries } = loadBibtexStore(vscode);
+      const bibPath = new MemoryUri("/workspace/reference.bib", scheme);
+      files.set(bibPath.fsPath, Buffer.from(broken));
+      const result = await ensureBibliographyEntries(bibPath, ["Hauenstein:2015ibu"], async () => target);
+      assert.deepStrictEqual(result.appendedKeys, ["Hauenstein:2015ibu"]);
+      assert.strictEqual(result.syntaxWarnings[0].key, "Existing2026");
+      assert.strictEqual(result.syntaxWarnings[0].line, 1);
+      const written = files.get(bibPath.fsPath).toString("utf8");
+      assert.strictEqual(written.slice(0, broken.length), broken);
+      const appended = await require("../../out/bibtexParser").parseBibtex(written.slice(broken.length));
+      assert.deepStrictEqual(appended.map(entry => entry.citationKey), ["Hauenstein:2015ibu"]);
+    });
+  }
+
+  test("reserves the key of a malformed existing entry without fetching or overwriting it", async () => {
+    const { vscode, files, writeCalls } = createMemoryVscode();
+    const { ensureBibliographyEntries } = loadBibtexStore(vscode);
+    const bibPath = new MemoryUri("/workspace/reference.bib", "overleaf-workshop");
+    files.set(bibPath.fsPath, Buffer.from(broken));
+    const result = await ensureBibliographyEntries(bibPath, ["Existing2026"], async () => {
+      assert.fail("A malformed existing entry must still reserve its citation key");
+    });
+    assert.deepStrictEqual(result.appendedKeys, []);
+    assert.strictEqual(result.syntaxWarnings.length, 1);
+    assert.strictEqual(writeCalls.length, 0);
+    assert.strictEqual(files.get(bibPath.fsPath).toString("utf8"), broken);
+  });
+
+  test("uses a fresh malformed bibliography added by a collaborator during fetch", async () => {
+    const { vscode, files } = createMemoryVscode();
+    const { ensureBibliographyEntries } = loadBibtexStore(vscode);
+    const bibPath = new MemoryUri("/workspace/reference.bib", "overleaf-workshop");
+    const original = '@article{First, title={Keep}}\n';
+    files.set(bibPath.fsPath, Buffer.from(original));
+    const result = await ensureBibliographyEntries(bibPath, ["Hauenstein:2015ibu"], async () => {
+      files.set(bibPath.fsPath, Buffer.from(original + broken));
+      return target;
+    });
+    assert.strictEqual(result.syntaxWarnings[0].key, "Existing2026");
+    assert.ok(files.get(bibPath.fsPath).toString("utf8").startsWith(original + broken));
+  });
+
+  test("refuses malformed fetched entries and ambiguous old entry boundaries without writing", async () => {
+    for (const [original, fetched] of [
+      [broken, '@article{New, title={Bad} year={2026}}'],
+      ['@article{Unclosed, title={Open}\n', '@article{New, title={Valid}}'],
+    ]) {
+      const { vscode, files, writeCalls } = createMemoryVscode();
+      const { ensureBibliographyEntries } = loadBibtexStore(vscode);
+      const bibPath = new MemoryUri("/workspace/reference.bib", "overleaf-workshop");
+      files.set(bibPath.fsPath, Buffer.from(original));
+      await assert.rejects(ensureBibliographyEntries(bibPath, ["New"], async () => fetched), /Invalid BibTeX/);
+      assert.strictEqual(writeCalls.length, 0);
+      assert.strictEqual(files.get(bibPath.fsPath).toString("utf8"), original);
+    }
+  });
+
+  test("rejects an unparseable same-key entry added concurrently", async () => {
+    const { vscode, files, writeCalls } = createMemoryVscode();
+    const { ensureBibliographyEntries } = loadBibtexStore(vscode);
+    const bibPath = new MemoryUri("/workspace/reference.bib", "overleaf-workshop");
+    files.set(bibPath.fsPath, Buffer.from(broken));
+    const concurrent = broken + '@phdthesis{Hauenstein:2015ibu, title={Thesis} year={2015}}\n';
+    await assert.rejects(ensureBibliographyEntries(bibPath, ["Hauenstein:2015ibu"], async () => {
+      files.set(bibPath.fsPath, Buffer.from(concurrent));
+      return target;
+    }), /could not be verified/);
+    assert.strictEqual(writeCalls.length, 0);
+    assert.strictEqual(files.get(bibPath.fsPath).toString("utf8"), concurrent);
+  });
+
+  test("permits unique valid provider additions beside preserved malformed entries", async () => {
+    const { vscode, files } = createMemoryVscode({
+      transformWrite: (_uri, value) => Buffer.from('@article{Concurrent, title={Valid}}\n' + value.toString("utf8")),
+    });
+    const { ensureBibliographyEntries } = loadBibtexStore(vscode);
+    const bibPath = new MemoryUri("/workspace/reference.bib", "overleaf-workshop");
+    files.set(bibPath.fsPath, Buffer.from(broken));
+    const result = await ensureBibliographyEntries(bibPath, ["Hauenstein:2015ibu"], async () => target);
+    assert.deepStrictEqual(result.appendedKeys, ["Hauenstein:2015ibu"]);
+    assert.ok(files.get(bibPath.fsPath).toString("utf8").includes(broken));
+  });
+
+  test("rejects provider changes to opaque old text, target entries, or malformed extra entries", async function () {
+    this.timeout(5000);
+    const transforms = [
+      text => text.replace('in preparation', 'changed'),
+      text => text.replace(broken, ''),
+      text => text.replace('A thesis', 'Changed thesis'),
+      text => text + '@article{Extra, title={Invalid} year={2026}}\n',
+    ];
+    for (const transform of transforms) {
+      const { vscode, files } = createMemoryVscode({
+        transformWrite: (_uri, value) => Buffer.from(transform(value.toString("utf8"))),
+      });
+      const { ensureBibliographyEntries } = loadBibtexStore(vscode);
+      const bibPath = new MemoryUri("/workspace/reference.bib", "overleaf-workshop");
+      files.set(bibPath.fsPath, Buffer.from(broken));
+      await assert.rejects(ensureBibliographyEntries(bibPath, ["Hauenstein:2015ibu"], async () => target), /could not be verified/);
+    }
+  });
+
+  test("keeps full-file replacement and refresh strict when entries are malformed", async () => {
+    const { vscode, files, writeCalls } = createMemoryVscode();
+    const { writeBibliographyText, transformBibEntriesAtomically } = loadBibtexStore(vscode);
+    const bibPath = new MemoryUri("/workspace/reference.bib", "overleaf-workshop");
+    files.set(bibPath.fsPath, Buffer.from(broken));
+    await assert.rejects(writeBibliographyText(bibPath, broken), /Invalid BibTeX/);
+    await assert.rejects(transformBibEntriesAtomically(bibPath, async () => {
+      assert.fail("Refreshing cannot discard malformed old content");
+    }), /Invalid BibTeX/);
+    assert.strictEqual(writeCalls.length, 0);
+  });
+
   test("serializes overlapping additions and writes one entry per citekey", async function () {
     this.timeout(3000);
     const { vscode, files } = createMemoryVscode();

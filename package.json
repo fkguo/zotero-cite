@@ -6,8 +6,8 @@
 		"type": "git",
 		"url": "https://github.com/fkguo/zotero-cite.git"
 	},
-	"description": "Insert Zotero citations and manage bibliographies in VS Code and Cursor, with optional INSPIRE-HEP BibTeX.",
-	"version": "0.11.2",
+	"description": "Insert Zotero citations and automatically update .bib files in VS Code and compatible VS Code-based editors, with optional INSPIRE-HEP support.",
+	"version": "0.11.3",
 	"engines": {
 		"vscode": "^1.61.0"
 	},
