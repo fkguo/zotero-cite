@@ -2,7 +2,7 @@
 
 English | [简体中文](README.zh-CN.md)
 
-Insert citations from Zotero and maintain your bibliography while writing in **VS Code or Cursor**. Zotero Cite supports LaTeX, Markdown, Pandoc, Quarto (`.qmd`), R Markdown (`.rmd`), and MDX (`.mdx`), including projects opened through Overleaf Workshop.
+Insert citations from Zotero and maintain your bibliography while writing in **VS Code or Cursor**. Zotero Cite supports LaTeX, Markdown, Pandoc, Quarto (`.qmd`), R Markdown (`.rmd`), and MDX (`.mdx`), including projects opened through [fkguo’s Overleaf Workshop fork](https://github.com/fkguo/Overleaf-Workshop).
 
 This is **fkguo's modified version** of [arch / Zotero Cite on Gitee](https://gitee.com/rusterx/zotero-cite). It adds automatic LaTeX bibliography discovery, support for collaborative and virtual workspaces, adjacent citation merging, and optional INSPIRE-HEP BibTeX retrieval through [zotero-inspire](https://github.com/fkguo/zotero-inspire).
 
@@ -144,6 +144,10 @@ Set `zotero-cite.defaultBibName` to `references.bib` so the extension writes to 
 Markdown citation previews and completion are enabled by default: hover over `[^key]` or `@key`, or type `[^` or `@` to see suggestions. To insert a website as a footnote, copy its URL to the clipboard and run **Cite Hyperlink**.
 
 ## Overleaf Workshop
+
+For the Overleaf workflow described here, use **[fkguo’s Overleaf Workshop fork](https://github.com/fkguo/Overleaf-Workshop)**, which includes additional collaborative-editing, compilation, and PDF-preview fixes. Download its `.vsix` from the **[fork’s latest GitHub release](https://github.com/fkguo/Overleaf-Workshop/releases/latest)** and install it through **Extensions → … → Install from VSIX…**, then reload the editor window.
+
+The fork uses the same `iamhyc.overleaf-workshop` extension ID as the Marketplace version. Disable automatic updates for that extension to keep a Marketplace update from replacing the fork. See its [README](https://github.com/fkguo/Overleaf-Workshop#readme) for supported features and remaining limitations.
 
 Open your project through Overleaf Workshop, keep Zotero running locally, and use the same citation commands. Bibliography discovery works from the main file and included chapter files. The project must be connected, trusted, and writable.
 

@@ -2,7 +2,7 @@
 
 [English](README.md) | 简体中文
 
-在 VS Code 或 Cursor 中从 Zotero 选择文献、插入引用，并更新参考文献文件。支持 LaTeX、Markdown、Pandoc、Quarto（`.qmd`）、R Markdown（`.rmd`）和 MDX（`.mdx`），也支持 Overleaf Workshop 打开的项目。
+在 VS Code 或 Cursor 中从 Zotero 选择文献、插入引用，并更新参考文献文件。支持 LaTeX、Markdown、Pandoc、Quarto（`.qmd`）、R Markdown（`.rmd`）和 MDX（`.mdx`），也支持通过 [fkguo 的 Overleaf Workshop fork](https://github.com/fkguo/Overleaf-Workshop) 打开的项目。
 
 ## 安装
 
@@ -138,6 +138,14 @@
 - `excludedBibFields`：Better BibTeX 导出时排除的字段，默认排除 `file` 和 `annotation`。
 - `showMarkdownCitationHoverPreview`：显示 Markdown 中 `[^key]` 与 `@key` 的悬浮预览，默认开启。
 - `showMarkdownCitationCompletion`：输入 `[^` 或 `@` 时显示 Markdown 引用建议列表，默认开启。
+
+## 搭配 Overleaf Workshop
+
+本文所述的 Overleaf 使用方式推荐搭配 **[fkguo 的 Overleaf Workshop fork](https://github.com/fkguo/Overleaf-Workshop)**，其中包含协作编辑、编译和 PDF 预览的额外修复。请从 **[该 fork 的最新 GitHub Release](https://github.com/fkguo/Overleaf-Workshop/releases/latest)** 下载 `.vsix`，通过编辑器的 **Extensions → … → Install from VSIX…** 安装，再重新加载窗口。
+
+该 fork 沿用 `iamhyc.overleaf-workshop` 扩展 ID。请关闭该扩展的自动更新，以免 Marketplace 更新将其替换。功能范围及现有限制见[该 fork 的 README](https://github.com/fkguo/Overleaf-Workshop#readme)。
+
+通过该 fork 打开项目，保持本机 Zotero 运行，即可使用前述引用命令。项目需连接正常、工作区受信任且文件可写；主文件及被包含的章节文件均可自动查找参考文献路径。
 
 ## 常见问题
 
