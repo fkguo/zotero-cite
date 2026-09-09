@@ -38,7 +38,7 @@ No keyboard shortcut is assigned by default. To use **Option+Z** on macOS or ano
 
 ## Use with zotero-inspire: INSPIRE-HEP BibTeX
 
-This option is useful for high-energy physics and related fields when you want the bibliography supplied by **INSPIRE-HEP**. The corresponding INSPIRE BibTeX is retrieved via zotero-inspire, preserving the citation key used by the selected Zotero item.
+This option is useful for high-energy physics and related fields when you want the bibliography supplied by **INSPIRE-HEP**. The corresponding INSPIRE BibTeX is retrieved via [zotero-inspire](https://github.com/fkguo/zotero-inspire), preserving the citation key used by the selected Zotero item.
 
 ### 1. Install both Zotero plugins
 
