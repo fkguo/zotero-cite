@@ -7,6 +7,7 @@ import {
   getInspireBibliography,
 } from "./inspireBibtex";
 import { t } from "./i18n";
+import { getOutputChannel, showInformationMessage } from "./ui";
 import {
   getBibliographyInGroup,
   getBibtexFromZotero,
@@ -91,13 +92,22 @@ async function getBetterBibtexBibliography(keys: string[]): Promise<string> {
 
 export async function getBibliography(keys: string[]): Promise<string> {
   if (getBibtexSource() === "zotero-inspire") {
-    return getInspireBibliography(keys);
+    return getInspireBibliography(keys, {
+      allowNetworkFallback: true,
+      onFallback: (fallbacks) => {
+        const details = Array.from(fallbacks, ([key, failure]) => `${key} (${failure.code})`).join(", ");
+        const message = t("info.inspireNetworkFallback", { entries: details });
+        getOutputChannel().appendLine(message);
+        showInformationMessage(message);
+      },
+    });
   }
   return getBetterBibtexBibliography(keys);
 }
 
 export async function getBibtexEntries(keys: string[]): Promise<BibtexEntryFetchResult> {
   if (getBibtexSource() === "zotero-inspire") {
+    // Refreshing existing entries must not replace INSPIRE data during an outage.
     return fetchInspireBibtexEntries(keys);
   }
 

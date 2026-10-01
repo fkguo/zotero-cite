@@ -88,7 +88,11 @@ To refresh entries already in your bibliography, open the `.bib` file and run **
 
 The source setting applies to **Export BibLaTeX**, **Cite and Create Bibliography for Pandoc/LaTeX**, and **Update BibTeX Entries**. It does not change the Markdown footnote workflow, which uses Better BibTeX and your citation style.
 
-**When INSPIRE cannot supply a reference:** Zotero Cite reports the problem and cancels that insertion. During an existing-bibliography update, unavailable entries are preserved and the reasons appear in the **Zotero Cite** Output channel. This source mode accepts INSPIRE entries only. For references outside INSPIRE, change `bibtexSource` to `better-bibtex` to export the metadata in your Zotero library.
+**Working offline:** When an INSPIRE request fails because of a network error or timeout, new citations and bibliography exports automatically use Better BibTeX to export the same resolved Zotero item from your local library. Citation keys are preserved, and a notification and the **Zotero Cite** Output channel identify the references fetched locally. Your source setting stays unchanged: the next request tries INSPIRE again. Zotero must remain running with both plugins enabled.
+
+**Updating an existing bibliography:** Unavailable INSPIRE entries retain their existing content rather than being replaced with local metadata during an outage. Available INSPIRE entries are still updated. To deliberately refresh existing entries from your Zotero library, select `better-bibtex` before running **Update BibTeX Entries**.
+
+Authentication failures, ambiguous matches, invalid BibTeX, and other errors do not trigger automatic fallback. If any requested reference remains unavailable, the new insertion or export is cancelled. For references outside INSPIRE, select `better-bibtex` explicitly.
 
 ## LaTeX bibliography selection
 

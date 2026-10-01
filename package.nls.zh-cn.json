@@ -22,7 +22,7 @@
   "configuration.caywUrl.description": "Better BibTeX CAYW 接口地址",
   "configuration.bibtexSource.description": "选择写入参考文献文件的 BibTeX 来源；条目选择仍使用 Better BibTeX CAYW。",
   "configuration.bibtexSource.betterBibtex": "通过 Better BibTeX 导出 BibTeX",
-  "configuration.bibtexSource.zoteroInspire": "通过 zotero-inspire 严格从 INSPIRE-HEP 获取 BibTeX",
+  "configuration.bibtexSource.zoteroInspire": "优先通过 zotero-inspire 获取 INSPIRE-HEP BibTeX；新增引用和导出在网络失败时自动使用本地 Better BibTeX",
   "configuration.zoteroInspireBibtexUrl.description": "zotero-inspire 本机只读 BibTeX 接口；路径必须为 /connector/zinspireBibtex。",
   "configuration.statusMessageDuration.description": "状态栏消息显示时长（毫秒）",
   "configuration.showCommandPickerInStatusBar.description": "是否在状态栏显示 Zotero 命令选择器按钮",

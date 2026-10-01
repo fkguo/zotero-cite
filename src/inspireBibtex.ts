@@ -2,7 +2,7 @@ import axios from "axios";
 
 import { getZoteroInspireBibtexUrl } from "./config";
 import { parseBibtex } from "./bibtexParser";
-import { sanitizeBibtexFields } from "./zotero";
+import { getBibtexFromResolvedZoteroItem, sanitizeBibtexFields } from "./zotero";
 import { getInspireReadToken, isValidInspireReadToken } from "./inspireSecret";
 import { storeInspireReadToken } from "./inspireSecret";
 import { errorToMessage, t } from "./i18n";
@@ -13,23 +13,36 @@ const DEFAULT_MAX_KEYS = 20;
 const HTTP_TIMEOUT_MS = 30_000;
 const MAX_RESPONSE_BYTES = 1024 * 1024;
 const ENDPOINT_PATH = "/connector/zinspireBibtex";
+const NETWORK_FAILURE_CODES = new Set([
+  "INSPIRE_NETWORK_ERROR",
+  "INSPIRE_TIMEOUT",
+  "INSPIRE_NETWORK_UNAVAILABLE",
+]);
 
 type JsonObject = Record<string, unknown>;
 
 export type BibtexFailure = {
   code: string;
   message: string;
+  item?: { libraryId: number; itemKey: string };
 };
 
 export type InspireBibtexEntries = {
   entries: Map<string, string>;
   failures: Map<string, BibtexFailure>;
+  fallbacks: Map<string, BibtexFailure>;
+};
+
+export type InspireBibtexOptions = {
+  allowNetworkFallback?: boolean;
+  onFallback?: (fallbacks: Map<string, BibtexFailure>) => void;
 };
 
 type InspireConnection = {
   url: string;
   token: string;
   maxKeys: number;
+  networkConcurrency: number;
 };
 
 function isJsonObject(value: unknown): value is JsonObject {
@@ -142,6 +155,10 @@ async function connect(): Promise<InspireConnection> {
     const maxKeys = Number.isInteger(advertisedMaxKeys) && advertisedMaxKeys > 0
       ? Math.min(advertisedMaxKeys, DEFAULT_MAX_KEYS)
       : DEFAULT_MAX_KEYS;
+    const advertisedConcurrency = Number(limits.network_concurrency);
+    const networkConcurrency = Number.isInteger(advertisedConcurrency) && advertisedConcurrency > 0
+      ? Math.min(advertisedConcurrency, DEFAULT_MAX_KEYS)
+      : 4;
 
     if (token !== storedToken) {
       try {
@@ -150,7 +167,7 @@ async function connect(): Promise<InspireConnection> {
         // Authentication already succeeded; a keychain cache failure must not block the request.
       }
     }
-    return { url, token, maxKeys };
+    return { url, token, maxKeys, networkConcurrency };
   }
 
   throw new Error(t("error.inspireTokenRejected"));
@@ -230,31 +247,82 @@ async function fetchChunk(
     failures.set(requestedKey, {
       code: typeof result.code === "string" ? result.code : "UNKNOWN_ERROR",
       message: typeof result.error === "string" ? result.error : t("error.invalidInspireApiResponse"),
+      item: resolvedItem(result.item),
     });
   }
 
-  return { entries, failures };
+  return { entries, failures, fallbacks: new Map() };
 }
 
-export async function fetchInspireBibtexEntries(keys: string[]): Promise<InspireBibtexEntries> {
+function resolvedItem(value: unknown): BibtexFailure["item"] {
+  if (!isJsonObject(value) ||
+    typeof value.library_id !== "number" || !Number.isSafeInteger(value.library_id) || value.library_id <= 0 ||
+    typeof value.zotero_item_key !== "string" || !/^[A-Z0-9]{8}$/.test(value.zotero_item_key)) {
+    return undefined;
+  }
+  return { libraryId: value.library_id, itemKey: value.zotero_item_key };
+}
+
+async function applyNetworkFallback(result: InspireBibtexEntries): Promise<void> {
+  for (const [key, failure] of result.failures) {
+    if (!NETWORK_FAILURE_CODES.has(failure.code) || !failure.item) {
+      continue;
+    }
+    try {
+      const { libraryId, itemKey } = failure.item;
+      const bibtex = await getBibtexFromResolvedZoteroItem(key, libraryId, itemKey);
+      const parsed = await parseBibtex(bibtex);
+      if (parsed.length !== 1 || parsed[0].citationKey !== key) {
+        throw new Error(t("error.inspireEntryKeyMismatch", { key }));
+      }
+      result.entries.set(key, bibtex);
+      result.failures.delete(key);
+      result.fallbacks.set(key, failure);
+    } catch (error) {
+      result.failures.set(key, {
+        code: "BETTER_BIBTEX_FALLBACK_FAILED",
+        message: `${failure.code}: ${failure.message}; Better BibTeX: ${errorToMessage(error)}`,
+      });
+    }
+  }
+}
+
+export async function fetchInspireBibtexEntries(
+  keys: string[],
+  options: InspireBibtexOptions = {}
+): Promise<InspireBibtexEntries> {
   const uniqueKeys = Array.from(new Set(keys));
   if (uniqueKeys.length === 0) {
-    return { entries: new Map(), failures: new Map() };
+    return { entries: new Map(), failures: new Map(), fallbacks: new Map() };
   }
 
   const connection = await connect();
-  const combined: InspireBibtexEntries = { entries: new Map(), failures: new Map() };
-  for (let offset = 0; offset < uniqueKeys.length; offset += connection.maxKeys) {
-    const chunk = uniqueKeys.slice(offset, offset + connection.maxKeys);
+  const combined: InspireBibtexEntries = { entries: new Map(), failures: new Map(), fallbacks: new Map() };
+  // One network wave keeps upstream timeouts inside the local HTTP budget,
+  // allowing Zotero to return each resolved item identity before we fall back.
+  const chunkSize = options.allowNetworkFallback
+    ? Math.min(connection.maxKeys, connection.networkConcurrency)
+    : connection.maxKeys;
+  for (let offset = 0; offset < uniqueKeys.length; offset += chunkSize) {
+    const chunk = uniqueKeys.slice(offset, offset + chunkSize);
     const result = await fetchChunk(connection, chunk);
     result.entries.forEach((value, key) => combined.entries.set(key, value));
     result.failures.forEach((value, key) => combined.failures.set(key, value));
   }
+  if (options.allowNetworkFallback) {
+    await applyNetworkFallback(combined);
+    if (combined.fallbacks.size > 0) {
+      options.onFallback?.(combined.fallbacks);
+    }
+  }
   return combined;
 }
 
-export async function getInspireBibliography(keys: string[]): Promise<string> {
-  const result = await fetchInspireBibtexEntries(keys);
+export async function getInspireBibliography(
+  keys: string[],
+  options: InspireBibtexOptions = {}
+): Promise<string> {
+  const result = await fetchInspireBibtexEntries(keys, options);
   if (result.failures.size > 0) {
     const details = Array.from(result.failures.entries())
       .map(([key, failure]) => `${key}: ${failure.code}`)
@@ -262,5 +330,5 @@ export async function getInspireBibliography(keys: string[]): Promise<string> {
     throw new Error(t("error.inspireBibtexFailed", { details }));
   }
 
-  return keys.map((key) => result.entries.get(key) || "").filter(Boolean).join("\n\n");
+  return Array.from(new Set(keys)).map((key) => result.entries.get(key) || "").filter(Boolean).join("\n\n");
 }

@@ -106,6 +106,14 @@ const messages: Record<string, LocaleMessage> = {
     en: "zotero-inspire returned BibTeX whose entry key does not match {key}.",
     zhCN: "zotero-inspire 返回的 BibTeX 条目键与 {key} 不一致。",
   },
+  "error.inspireFallbackItemMismatch": {
+    en: "The Zotero item resolved for {key} no longer has that citation key; automatic fallback was cancelled.",
+    zhCN: "为 {key} 匹配的 Zotero 条目已不再使用该引用键；已取消自动回退。",
+  },
+  "info.inspireNetworkFallback": {
+    en: "INSPIRE network requests failed. Fetched from local Zotero metadata using Better BibTeX: {entries}. INSPIRE remains the preferred source for the next request.",
+    zhCN: "INSPIRE 网络请求失败，已通过 Better BibTeX 从本地 Zotero 数据获取：{entries}。下次请求仍优先使用 INSPIRE。",
+  },
   "error.inspireBibtexFailed": {
     en: "Could not obtain INSPIRE BibTeX for all requested entries: {details}. No bibliography file was changed.",
     zhCN: "无法从 INSPIRE 获取全部请求条目：{details}。参考文献文件未被修改。",

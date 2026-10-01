@@ -225,6 +225,21 @@ export async function getItemGroupName(key: string): Promise<string> {
   throw new Error(t("error.itemNotFound", { key }));
 }
 
+/** Verify the resolved item still owns this key, then export from its library. */
+export async function getBibtexFromResolvedZoteroItem(
+  citeKey: string,
+  libraryId: number,
+  itemKey: string
+): Promise<string> {
+  const qualifiedKey = `${libraryId}:${itemKey}`;
+  const keys = await postJsonRpc<Record<string, string | null>>("item.citationkey", [[qualifiedKey]]);
+  if (keys?.[qualifiedKey] !== citeKey) {
+    throw new Error(t("error.inspireFallbackItemMismatch", { key: citeKey }));
+  }
+  // item.export rejects missing or duplicate citation keys within this library.
+  return getBibliographyInGroup([citeKey], libraryId);
+}
+
 export async function getBibliographyInGroup(
   keys: string[],
   groupId: ZoteroLibraryId

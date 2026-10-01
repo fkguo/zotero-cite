@@ -22,7 +22,7 @@
   "configuration.caywUrl.description": "Better BibTeX CAYW endpoint URL",
   "configuration.bibtexSource.description": "Select the provider used for BibTeX written to bibliography files. Item selection still uses Better BibTeX CAYW.",
   "configuration.bibtexSource.betterBibtex": "Export BibTeX through Better BibTeX",
-  "configuration.bibtexSource.zoteroInspire": "Fetch BibTeX strictly from INSPIRE-HEP through zotero-inspire",
+  "configuration.bibtexSource.zoteroInspire": "Prefer INSPIRE-HEP through zotero-inspire; new citations and exports use local Better BibTeX on network failure",
   "configuration.zoteroInspireBibtexUrl.description": "Loopback zotero-inspire read-only BibTeX endpoint. The path must be /connector/zinspireBibtex.",
   "configuration.statusMessageDuration.description": "Status bar message duration in milliseconds",
   "configuration.showCommandPickerInStatusBar.description": "Show Zotero command picker button in the status bar",

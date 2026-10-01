@@ -159,6 +159,7 @@
 - `getItemGroupName(key)`
 - `getBibliographyInGroup(keys, groupId)`
 - `getBibtexFromZotero(citeKey)`
+- `getBibtexFromResolvedZoteroItem(citeKey, libraryId, itemKey)`：核对已匹配条目的引用键，再从指定文库导出；用于网络失败回退。
 - `sanitizeBibtexFields(bibText)`
 
 ### `inspireBibtex.ts`、`inspireSecret.ts` 与 `zoteroProfile.ts`
@@ -166,14 +167,15 @@
 职责：
 - 调用 zotero-inspire API v1 的 `ping` 与 `fetch` 操作。
 - 只向数值型本机回环地址发送专用只读令牌，并限制响应大小、超时和重定向。
-- 校验响应顺序、引用键与 BibTeX entry key；选择 zotero-inspire 时拒绝 Better BibTeX fallback。
+- 校验响应顺序、引用键与 BibTeX entry key；拒绝服务端因未收录等原因返回的 Better BibTeX 条目。
+- 新增引用和导出时，对 INSPIRE 网络错误或超时启用本地 Better BibTeX 回退，核对同一 Zotero 条目的身份、引用键和导出内容，记录回退原因；更新已有条目时不启用回退。
 - 按服务端声明的批量上限切分请求，并保留逐条失败信息。
 - 自动定位 macOS、Windows、Linux 与 Linux Flatpak 的标准 Zotero profiles，从 `prefs.js` 发现专用只读令牌。
 - 验证成功后通过 VS Code/Cursor Secret Storage 缓存令牌，避免人工配置和写入工作区设置。
 
 关键导出：
-- `fetchInspireBibtexEntries(keys)`
-- `getInspireBibliography(keys)`
+- `fetchInspireBibtexEntries(keys, options?)`
+- `getInspireBibliography(keys, options?)`
 - `initializeInspireSecretStorage(storage)`
 - `storeInspireReadToken(value)`
 - `discoverZoteroInspireReadTokens()`

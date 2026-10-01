@@ -115,7 +115,11 @@
 
 这一设置适用于导出 `.bib`、补充缺失条目和更新已有条目。两种来源均需 Better BibTeX 提供文献选择器；Markdown 脚注式文献仍使用 Better BibTeX。
 
-选择 `zotero-inspire` 后，无法从 INSPIRE-HEP 获取条目时，本次新增引用会取消并提示原因。更新已有 `.bib` 时，无法获取的条目会保留，原因可在 Zotero Cite 输出面板查看。
+选择 `zotero-inspire` 后，INSPIRE 网络请求失败或超时时，新增引用和导出参考文献会自动通过 Better BibTeX 从本地 Zotero 文库导出同一条目，保留引用键。通知和 Zotero Cite 输出面板会列出使用本地数据的条目及原因。来源设置不会改变，下次请求仍优先使用 INSPIRE。断网时 Zotero 仍须运行，且两种插件均须启用。
+
+运行“更新 BibTeX 条目”时，无法从 INSPIRE 获取的旧条目会保留原有内容，避免断网期间被本地元数据替换；可获取的 INSPIRE 条目仍会更新。如需明确使用本地数据刷新已有 `.bib`，先将来源切换为 `better-bibtex`。
+
+认证失败、匹配歧义、无效 BibTeX 等其他错误不会触发自动回退。如果仍有请求条目无法获取，本次新增引用或导出会取消并提示原因。INSPIRE 未收录的文献仍需手动选择 `better-bibtex`。
 
 搭配 zotero-inspire 的安装、文献准备及设置示例见[英文使用指南](README.md#use-with-zotero-inspire-inspire-hep-bibtex)。
 
