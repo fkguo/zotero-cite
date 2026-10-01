@@ -18,7 +18,7 @@ You need:
 
 To install this version of Zotero Cite:
 
-1. Download **[zotero-cite-0.11.3.vsix](https://github.com/fkguo/zotero-cite/releases/download/v0.11.3/zotero-cite-0.11.3.vsix)** from the release assets. Choose the `.vsix`, not a source-code archive.
+1. Download **[zotero-cite-0.11.4.vsix](https://github.com/fkguo/zotero-cite/releases/download/v0.11.4/zotero-cite-0.11.4.vsix)** from the release assets. Choose the `.vsix`, not a source-code archive.
 2. In your editor, open **Extensions**, click the **…** menu, and select **Install from VSIX…**. Choose the downloaded file.
 3. Run **Developer: Reload Window** from the Command Palette.
 

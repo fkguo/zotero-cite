@@ -4,6 +4,14 @@ All notable changes to the "zotero-cite" extension will be documented in this fi
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.11.4] - 2026-10-01
+
+- Automatically use local Better BibTeX metadata for new citations and bibliography exports when INSPIRE requests fail because of network errors or timeouts.
+- Preserve citation keys, verify the resolved Zotero item before local export, and identify references fetched locally in notifications and the Zotero Cite Output channel.
+- Keep INSPIRE as the preferred source for subsequent requests and preserve unavailable existing entries during bibliography refresh.
+- Limit fallback-enabled batches to the advertised INSPIRE network concurrency so per-item timeout results can reach the client.
+- Continue reporting authentication, matching, and BibTeX validation errors without automatic fallback.
+
 ## [0.11.3] - 2026-09-09
 
 - Allow citation insertion past syntax errors in independently delimited existing BibTeX entries, preserving their text and citation keys while strictly validating new entries.

@@ -6,7 +6,7 @@
 
 ## 安装
 
-1. 下载 [zotero-cite-0.11.3.vsix](https://github.com/fkguo/zotero-cite/releases/download/v0.11.3/zotero-cite-0.11.3.vsix)；也可进入[发行版页面](https://github.com/fkguo/zotero-cite/releases/tag/v0.11.3)下载附件。不要选择源码压缩包。
+1. 下载 [zotero-cite-0.11.4.vsix](https://github.com/fkguo/zotero-cite/releases/download/v0.11.4/zotero-cite-0.11.4.vsix)；也可进入[发行版页面](https://github.com/fkguo/zotero-cite/releases/tag/v0.11.4)下载附件。不要选择源码压缩包。
 2. 在编辑器的扩展面板中打开右上角菜单，选择 **Install from VSIX…（从 VSIX 安装）**，然后选择下载的文件。
 3. 安装完成后，运行命令面板中的 **Developer: Reload Window（重新加载窗口）**。
 
